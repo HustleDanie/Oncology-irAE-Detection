@@ -140,5 +140,5 @@ def main():
         about.render()
 
 
-if __name__ == "__main__":
-    main()
+# Call main() when the module is loaded by Streamlit
+main()
