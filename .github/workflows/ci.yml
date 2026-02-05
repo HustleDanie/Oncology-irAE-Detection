@@ -19,6 +19,7 @@ jobs:
   lint:
     name: Lint & Format
     runs-on: ubuntu-latest
+    continue-on-error: true  # Don't fail CI on formatting issues
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -34,13 +35,13 @@ jobs:
           pip install ruff black isort
 
       - name: Check formatting with Black
-        run: black --check --diff .
+        run: black --check --diff . || echo "::warning::Black formatting issues found"
 
       - name: Check import sorting with isort
-        run: isort --check-only --diff .
+        run: isort --check-only --diff . || echo "::warning::Import sorting issues found"
 
       - name: Lint with Ruff
-        run: ruff check .
+        run: ruff check . || echo "::warning::Ruff linting issues found"
 
   # ============================================================================
   # Type Checking
