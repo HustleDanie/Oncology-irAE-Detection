@@ -1,3 +1,14 @@
+---
+title: Oncology irAE Detection
+emoji: 🏥
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+pinned: false
+license: mit
+---
+
 # 🏥 Oncology irAE Clinical Safety Assistant
 
 An AI-powered clinical decision support system for detecting, classifying, and triaging **immune-related adverse events (irAEs)** in oncology immunotherapy patients.
