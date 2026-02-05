@@ -3,12 +3,18 @@
 import os
 from pathlib import Path
 from typing import Optional
-from pydantic import Field
+from pydantic import Field, ConfigDict
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
+    
+    model_config = ConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+    )
     
     # Application
     app_name: str = "irAE Clinical Safety Assistant"
@@ -36,11 +42,6 @@ class Settings(BaseSettings):
     
     # Paths
     base_dir: Path = Field(default=Path(__file__).parent.parent, description="Base directory")
-    
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
     
     @property
     def llm_enabled(self) -> bool:
