@@ -25,10 +25,10 @@ class Settings(BaseSettings):
     anthropic_api_key: Optional[str] = Field(default=None, description="Anthropic API key")
     anthropic_model: str = Field(default="claude-3-sonnet-20240229", description="Anthropic model name")
 
-    # Local (Hugging Face) LLMs
-    huggingface_reasoning_model: str = Field(default="google/gemma-med-lm-v1.1", description="HF model for clinical reasoning")
-    huggingface_conditions_model: str = Field(default="google/gemma-conditions-chat-v1.1", description="HF model for condition extraction")
-    huggingface_vitals_model: str = Field(default="google/gemma-vitals-chat-v1.1", description="HF model for vitals extraction")
+    # Local (Hugging Face) LLMs - Google HAI-DEF MedGemma
+    huggingface_model: str = Field(default="google/medgemma-4b-it", description="Primary HuggingFace model for all medical tasks")
+    huggingface_model_fallback: str = Field(default="google/medgemma-27b-text-it", description="Fallback model for complex reasoning (requires more resources)")
+    use_quantization: bool = Field(default=True, description="Use 8-bit quantization to reduce memory usage")
     
     # Assessment Configuration
     default_use_llm: bool = Field(default=False, description="Use LLM by default for assessments")

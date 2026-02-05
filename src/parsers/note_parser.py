@@ -58,21 +58,19 @@ class NoteParser:
         if not self.llm_client:
             return [], None
 
-        # Use conditions model for symptoms
+        # Use MedGemma for symptom extraction
         symptoms_prompt = self._build_symptoms_prompt(note.content)
         symptoms_json = await self.llm_client.complete_json(
-            system_prompt="You are a clinical data extraction expert. Extract patient symptoms from the clinical note.",
+            system_prompt="You are a medical AI assistant trained to extract clinical information. Extract patient symptoms from the clinical note accurately.",
             user_prompt=symptoms_prompt,
-            model_key="conditions"
         )
         symptoms = self._parse_symptoms_from_llm(symptoms_json, note.date)
 
-        # Use vitals model for vital signs
+        # Use MedGemma for vital signs extraction
         vitals_prompt = self._build_vitals_prompt(note.content)
         vitals_json = await self.llm_client.complete_json(
-            system_prompt="You are a clinical data extraction expert. Extract vital signs from the clinical note.",
+            system_prompt="You are a medical AI assistant trained to extract clinical information. Extract vital signs from the clinical note accurately.",
             user_prompt=vitals_prompt,
-            model_key="vitals"
         )
         vitals = self._parse_vitals_from_llm(vitals_json, note.date)
 

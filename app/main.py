@@ -26,12 +26,10 @@ def get_llm_client():
         elif settings.llm_provider == "anthropic" and settings.anthropic_api_key:
             st.session_state.llm_client = AnthropicClient(api_key=settings.anthropic_api_key, model=settings.anthropic_model)
         elif settings.llm_provider == "huggingface":
-            hf_models = {
-                "reasoning": settings.huggingface_reasoning_model,
-                "conditions": settings.huggingface_conditions_model,
-                "vitals": settings.huggingface_vitals_model,
-            }
-            st.session_state.llm_client = HuggingFaceClient(models=hf_models)
+            st.session_state.llm_client = HuggingFaceClient(
+                model_name=settings.huggingface_model,
+                use_quantization=settings.use_quantization
+            )
         else:
             st.session_state.llm_client = None
     return st.session_state.llm_client

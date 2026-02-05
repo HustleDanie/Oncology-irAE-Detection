@@ -98,40 +98,58 @@ class OpenAIClient(BaseLLMClient):
 
 
 class HuggingFaceClient(BaseLLMClient):
-    """Hugging Face Hub client for managing multiple local models."""
+    """Hugging Face client for Google MedGemma models from HAI-DEF."""
 
-    def __init__(self, models: dict[str, str]):
-        self.model_names = models
-        self._pipelines = {}
+    def __init__(self, model_name: str = "google/medgemma-4b-it", use_quantization: bool = True):
+        self.model_name = model_name
+        self.use_quantization = use_quantization
+        self._pipeline = None
+        self._tokenizer = None
 
-    def _get_pipeline(self, model_key: str):
-        """Lazy initialization of Hugging Face pipeline for a specific model."""
-        if model_key not in self._pipelines:
+    def _get_pipeline(self, model_key: str = None):
+        """Lazy initialization of Hugging Face pipeline for MedGemma."""
+        if self._pipeline is None:
             try:
                 import torch
                 from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
 
-                model_name = self.model_names[model_key]
+                print(f"Loading MedGemma model: {self.model_name}...")
                 
-                tokenizer = AutoTokenizer.from_pretrained(model_name)
+                self._tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+                
+                # Load with quantization if enabled and available
+                load_kwargs = {
+                    "device_map": "auto",
+                    "torch_dtype": torch.bfloat16,
+                }
+                
+                if self.use_quantization:
+                    try:
+                        import bitsandbytes
+                        load_kwargs["load_in_8bit"] = True
+                        print("Using 8-bit quantization for memory efficiency.")
+                    except ImportError:
+                        print("bitsandbytes not available, loading without quantization.")
+                
                 model = AutoModelForCausalLM.from_pretrained(
-                    model_name,
-                    device_map="auto",
-                    torch_dtype=torch.bfloat16
+                    self.model_name,
+                    **load_kwargs
                 )
 
-                self._pipelines[model_key] = pipeline(
+                self._pipeline = pipeline(
                     "text-generation",
                     model=model,
-                    tokenizer=tokenizer,
+                    tokenizer=self._tokenizer,
                 )
-            except ImportError:
+                print(f"MedGemma model loaded successfully.")
+                
+            except ImportError as e:
                 raise ImportError(
-                    "Hugging Face packages required. Install with: pip install transformers torch accelerate sentencepiece"
+                    f"Hugging Face packages required. Install with: pip install transformers torch accelerate sentencepiece bitsandbytes\nError: {e}"
                 )
-            except KeyError:
-                raise ValueError(f"Model key '{model_key}' not found in configured models.")
-        return self._pipelines[model_key]
+            except Exception as e:
+                raise RuntimeError(f"Failed to load MedGemma model: {e}")
+        return self._pipeline
 
     async def complete(
         self,
@@ -139,15 +157,17 @@ class HuggingFaceClient(BaseLLMClient):
         user_prompt: str,
         temperature: float = 0.3,
         max_tokens: int = 2000,
-        model_key: str = "reasoning"
+        model_key: str = None  # Kept for backwards compatibility, ignored
     ) -> str:
-        """Generate a completion using a specific local Hugging Face model."""
+        """Generate a completion using MedGemma model."""
         import asyncio
 
-        pipe = self._get_pipeline(model_key)
+        pipe = self._get_pipeline()
         
+        # MedGemma uses a chat format with system and user roles
         messages = [
-            {"role": "user", "content": f"{system_prompt}\n\n{user_prompt}"},
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
         ]
         prompt = pipe.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 
@@ -172,13 +192,13 @@ class HuggingFaceClient(BaseLLMClient):
         user_prompt: str,
         temperature: float = 0.1,
         max_tokens: int = 3000,
-        model_key: str = "reasoning"
+        model_key: str = None  # Kept for backwards compatibility, ignored
     ) -> dict:
-        """Generate a JSON completion using a specific local Hugging Face model."""
+        """Generate a JSON completion using MedGemma model."""
         json_system_prompt = f"{system_prompt}\n\nIMPORTANT: Your response MUST be a single, valid JSON object and nothing else. Do not include any text before or after the JSON."
         
         response_text = await self.complete(
-            json_system_prompt, user_prompt, temperature, max_tokens, model_key=model_key
+            json_system_prompt, user_prompt, temperature, max_tokens
         )
         
         try:
