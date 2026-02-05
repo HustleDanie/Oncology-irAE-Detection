@@ -85,12 +85,12 @@ class NoteParser:
         Format the output as a JSON object with a single key "symptoms" which is a list of objects, each with "name", "present", and "details" keys.
 
         Example:
-        {
+        {{
           "symptoms": [
-            { "name": "diarrhea", "present": true, "details": "3 watery stools per day" },
-            { "name": "fever", "present": false, "details": "denies fever" }
+            {{ "name": "diarrhea", "present": true, "details": "3 watery stools per day" }},
+            {{ "name": "fever", "present": false, "details": "denies fever" }}
           ]
-        }
+        }}
 
         Clinical Note:
         ---
@@ -105,8 +105,8 @@ class NoteParser:
         Format the output as a JSON object with a single key "vitals" containing the extracted values.
 
         Example:
-        {
-          "vitals": {
+        {{
+          "vitals": {{
             "temperature_c": 37.2,
             "bp_systolic": 120,
             "bp_diastolic": 80,
@@ -114,7 +114,7 @@ class NoteParser:
             "respiratory_rate": 16,
             "oxygen_saturation": 98
           }}
-        }
+        }}
 
         Clinical Note:
         ---
