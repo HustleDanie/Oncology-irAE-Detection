@@ -2,10 +2,13 @@
 
 import re
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 
 from ..models.patient import ClinicalNote, PatientSymptom, VitalSigns
-from ..llm.client import BaseLLMClient
+
+# Use TYPE_CHECKING to avoid circular import
+if TYPE_CHECKING:
+    from ..llm.client import BaseLLMClient
 
 
 class NoteParser:
@@ -35,7 +38,7 @@ class NoteParser:
         "consult": ["consult", "consultation"],
     }
     
-    def __init__(self, llm_client: Optional[BaseLLMClient] = None):
+    def __init__(self, llm_client: Optional["BaseLLMClient"] = None):
         self.llm_client = llm_client
         self.compiled_sections = {
             name: re.compile(pattern, re.IGNORECASE | re.DOTALL)
