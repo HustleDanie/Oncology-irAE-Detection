@@ -366,8 +366,11 @@ def run_assessment(patient_data: PatientData, use_llm: bool = False):
     """Run the irAE assessment and display results."""
     with st.spinner("🔍 Analyzing patient data for irAE signals..."):
         try:
-            # Initialize assessment engine (without LLM for now)
-            engine = IRAEAssessmentEngine(use_llm=False)
+            # Get LLM client from session state if available and requested
+            llm_client = st.session_state.get("llm_client", None) if use_llm else None
+            
+            # Initialize assessment engine with actual LLM if configured
+            engine = IRAEAssessmentEngine(llm_client=llm_client, use_llm=use_llm and llm_client is not None)
             
             # Run assessment
             result = engine.assess_sync(patient_data)

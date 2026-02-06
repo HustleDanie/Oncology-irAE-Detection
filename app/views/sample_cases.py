@@ -1,7 +1,6 @@
-"""Sample Cases page with categorized clinical scenarios for demonstration."""
+"""Sample Cases page with categorized clinical scenarios for irAE analysis."""
 
 import streamlit as st
-import asyncio
 from datetime import datetime
 import sys
 from pathlib import Path
@@ -433,16 +432,15 @@ def analyze_case(case_data: dict):
                 raw_symptoms=case_data['symptoms'],
             )
             
-            # Run assessment (rule-based only for demo)
-            engine = IRAEAssessmentEngine(llm_client=None, use_llm=False)
+            # Get LLM client from session state if available
+            llm_client = st.session_state.get("llm_client", None)
+            use_llm = llm_client is not None
             
-            # Handle async assess method
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                result = loop.run_until_complete(engine.assess(patient_data))
-            finally:
-                loop.close()
+            # Initialize assessment engine with actual LLM if configured
+            engine = IRAEAssessmentEngine(llm_client=llm_client, use_llm=use_llm)
+            
+            # Run assessment (synchronous wrapper handles async internally)
+            result = engine.assess_sync(patient_data)
             
             # Store results
             st.session_state.selected_case = case_data
@@ -613,8 +611,8 @@ def display_case_results():
     st.warning("""
     ⚠️ **Clinical Decision Support Only**
     
-    This analysis is for demonstration purposes. All findings must be verified by a qualified 
-    healthcare provider. This tool does not replace clinical judgment.
+    This analysis uses AI-powered clinical reasoning models. All findings must be verified by a qualified 
+    healthcare provider. This tool supports but does not replace clinical judgment.
     """)
     
     # Clear button

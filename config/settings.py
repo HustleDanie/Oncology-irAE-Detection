@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     use_quantization: bool = Field(default=True, description="Use 8-bit quantization to reduce memory usage")
     
     # Assessment Configuration
-    default_use_llm: bool = Field(default=False, description="Use LLM by default for assessments")
+    default_use_llm: bool = Field(default=True, description="Use LLM by default for assessments")
     max_evidence_items: int = Field(default=10, description="Maximum evidence items to include")
     
     # Paths
