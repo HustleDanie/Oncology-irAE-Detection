@@ -105,6 +105,7 @@ class HuggingFaceClient(BaseLLMClient):
         self.use_quantization = use_quantization
         self._pipeline = None
         self._tokenizer = None
+        self._hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
 
     def _get_pipeline(self, model_key: str = None):
         """Lazy initialization of Hugging Face pipeline for MedGemma."""
@@ -115,12 +116,19 @@ class HuggingFaceClient(BaseLLMClient):
 
                 print(f"Loading MedGemma model: {self.model_name}...")
                 
-                self._tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+                # Use token for gated model access
+                token_kwargs = {"token": self._hf_token} if self._hf_token else {}
+                
+                self._tokenizer = AutoTokenizer.from_pretrained(
+                    self.model_name,
+                    **token_kwargs
+                )
                 
                 # Load with quantization if enabled and available
                 load_kwargs = {
                     "device_map": "auto",
                     "torch_dtype": torch.bfloat16,
+                    **token_kwargs
                 }
                 
                 if self.use_quantization:

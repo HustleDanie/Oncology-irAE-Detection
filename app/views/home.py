@@ -1,6 +1,7 @@
 """Home page for the irAE Clinical Safety Assistant."""
 
 import streamlit as st
+import os
 
 
 def render():
@@ -13,6 +14,9 @@ def render():
         '<p class="sub-header">AI-Powered Detection of Immune-Related Adverse Events in Oncology</p>',
         unsafe_allow_html=True
     )
+    
+    # Model Status Indicator
+    _show_model_status()
     
     # Overview
     st.markdown("---")
@@ -125,3 +129,34 @@ def render():
         - Require prompt recognition and management
         - Most are reversible with appropriate treatment
         """)
+
+
+def _show_model_status():
+    """Show the AI model status indicator."""
+    llm_client = st.session_state.get("llm_client", None)
+    hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+    
+    col1, col2 = st.columns([3, 1])
+    
+    with col2:
+        if llm_client is not None:
+            st.success("🤖 **MedGemma Active**")
+        elif hf_token:
+            st.info("🔄 **Model Loading...**")
+        else:
+            st.warning("⚡ **Rule-Based Mode**")
+            with st.expander("ℹ️ About Analysis Modes"):
+                st.markdown("""
+                **Current Mode: Rule-Based Analysis**
+                
+                The system is using deterministic clinical rules for irAE detection.
+                This provides reliable pattern matching for:
+                - Lab value abnormalities
+                - Symptom pattern recognition
+                - Medication identification
+                - CTCAE grading
+                
+                **To enable AI-enhanced analysis:**
+                1. Set `HF_TOKEN` environment variable
+                2. Accept MedGemma terms at huggingface.co
+                """)
