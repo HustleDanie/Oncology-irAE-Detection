@@ -49,7 +49,7 @@ if "patient_data" not in st.session_state:
 if "assessment_result" not in st.session_state:
     st.session_state.assessment_result = None
 
-from app.pages import home, assessment, results, about
+from app.views import home, assessment, results, about
 
 
 def main():
