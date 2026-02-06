@@ -462,20 +462,29 @@ def display_case_results():
     st.markdown("## 📊 Analysis Results")
     st.markdown(f"**Case:** {case['patient_id']} - {case['description']}")
     
-    # Urgency banner
-    urgency = result.urgency.value if result.urgency else "unknown"
+    # Urgency banner - extract just the urgency level from the enum value
+    urgency_value = result.urgency.value if result.urgency else "unknown"
+    # Extract urgency level (e.g., "🟠 Urgent (same day)" -> "urgent")
+    urgency_key = "routine"
+    if "Emergency" in urgency_value:
+        urgency_key = "emergency"
+    elif "Urgent" in urgency_value:
+        urgency_key = "urgent"
+    elif "soon" in urgency_value.lower():
+        urgency_key = "soon"
+    
     urgency_colors = {
         "emergency": ("🚨", "#f44336", "#ffebee"),
         "urgent": ("⚠️", "#ff9800", "#fff3e0"),
         "soon": ("📋", "#ffeb3b", "#fffde7"),
         "routine": ("✅", "#4caf50", "#e8f5e9"),
     }
-    icon, border_color, bg_color = urgency_colors.get(urgency, ("❓", "#9e9e9e", "#f5f5f5"))
+    icon, border_color, bg_color = urgency_colors.get(urgency_key, ("❓", "#9e9e9e", "#f5f5f5"))
     
     st.markdown(f"""
     <div style="background-color: {bg_color}; border-left: 5px solid {border_color}; 
                 padding: 1rem; margin: 1rem 0; border-radius: 5px;">
-        <h3 style="margin: 0;">{icon} Urgency: {urgency.upper()}</h3>
+        <h3 style="margin: 0;">{icon} {urgency_value}</h3>
     </div>
     """, unsafe_allow_html=True)
     
@@ -483,26 +492,24 @@ def display_case_results():
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Immunotherapy", "✅ Detected" if result.immunotherapy_context else "❌ Not Found")
+        immuno_status = "✅ Detected" if (result.immunotherapy_context and result.immunotherapy_context.on_immunotherapy) else "❌ Not Found"
+        st.metric("Immunotherapy", immuno_status)
     
     with col2:
-        finding_count = len(result.organ_findings) if result.organ_findings else 0
-        st.metric("Organ Systems Affected", finding_count)
+        # Count affected systems (where detected=True)
+        affected = [f for f in result.affected_systems if f.detected] if result.affected_systems else []
+        st.metric("Organ Systems Affected", len(affected))
     
     with col3:
-        max_grade = 0
-        if result.organ_findings:
-            for finding in result.organ_findings:
-                if finding.ctcae_grade and finding.ctcae_grade > max_grade:
-                    max_grade = finding.ctcae_grade
-        st.metric("Highest CTCAE Grade", f"Grade {max_grade}" if max_grade > 0 else "N/A")
+        severity = result.overall_severity.value if result.overall_severity else "Unknown"
+        st.metric("Overall Severity", severity.split(" - ")[0] if " - " in severity else severity)
     
     with col4:
-        likelihood = result.causality.likelihood.value if result.causality else "unknown"
-        st.metric("irAE Likelihood", likelihood.title())
+        likelihood = result.causality.likelihood.value if result.causality else "Unknown"
+        st.metric("irAE Likelihood", likelihood)
     
     # Immunotherapy context
-    if result.immunotherapy_context:
+    if result.immunotherapy_context and result.immunotherapy_context.on_immunotherapy:
         st.markdown("### 💉 Immunotherapy Context")
         ctx = result.immunotherapy_context
         st.markdown(f"- **Agent(s):** {', '.join(ctx.agents) if ctx.agents else 'Unknown'}")
@@ -511,65 +518,95 @@ def display_case_results():
             st.markdown("- **⚠️ Combination therapy** (higher irAE risk)")
     
     # Organ findings
-    if result.organ_findings:
+    affected_systems = [f for f in result.affected_systems if f.detected] if result.affected_systems else []
+    if affected_systems:
         st.markdown("### 🏥 Organ System Findings")
         
-        for finding in result.organ_findings:
-            severity_emoji = {"mild": "🟢", "moderate": "🟡", "severe": "🟠", "life_threatening": "🔴"}
-            emoji = severity_emoji.get(finding.severity.value if finding.severity else "", "⚪")
+        for finding in affected_systems:
+            severity_str = finding.severity.value if finding.severity else "Unknown"
+            severity_emoji = {
+                "Grade 1": "🟢", 
+                "Grade 2": "🟡", 
+                "Grade 3": "🟠", 
+                "Grade 4": "🔴"
+            }
+            emoji = "⚪"
+            for grade, em in severity_emoji.items():
+                if grade in severity_str:
+                    emoji = em
+                    break
             
-            with st.expander(f"{emoji} **{finding.organ_system.value.title()}** - Grade {finding.ctcae_grade}", expanded=True):
+            with st.expander(f"{emoji} **{finding.system.value}** - {severity_str}", expanded=True):
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    st.markdown(f"**Syndrome:** {finding.syndrome or 'Not specified'}")
-                    st.markdown(f"**Severity:** {finding.severity.value.title() if finding.severity else 'Unknown'}")
-                    st.markdown(f"**CTCAE Grade:** {finding.ctcae_grade}")
+                    st.markdown(f"**Severity:** {severity_str}")
+                    if finding.confidence:
+                        st.markdown(f"**Confidence:** {finding.confidence:.0%}")
+                    if finding.findings:
+                        st.markdown("**Findings:**")
+                        for f in finding.findings[:5]:
+                            st.markdown(f"- {f}")
                 
                 with col2:
-                    if finding.supporting_evidence:
+                    if finding.evidence:
                         st.markdown("**Supporting Evidence:**")
-                        for evidence in finding.supporting_evidence[:5]:
+                        for evidence in finding.evidence[:5]:
                             st.markdown(f"- {evidence}")
     
     # Recommendations
     if result.recommended_actions:
         st.markdown("### 📋 Recommended Actions")
         
-        # Group by priority
-        immediate = [a for a in result.recommended_actions if a.priority == "immediate"]
-        short_term = [a for a in result.recommended_actions if a.priority == "short_term"]
-        monitoring = [a for a in result.recommended_actions if a.priority == "monitoring"]
+        # Sort by priority (1 is highest)
+        sorted_actions = sorted(result.recommended_actions, key=lambda a: a.priority)
         
-        if immediate:
-            st.markdown("#### 🚨 Immediate Actions")
-            for action in immediate:
+        high_priority = [a for a in sorted_actions if a.priority <= 2]
+        medium_priority = [a for a in sorted_actions if a.priority == 3]
+        low_priority = [a for a in sorted_actions if a.priority >= 4]
+        
+        if high_priority:
+            st.markdown("#### 🚨 High Priority")
+            for action in high_priority:
                 st.markdown(f"- **{action.action}**")
                 if action.rationale:
-                    st.markdown(f"  - *Rationale: {action.rationale}*")
+                    st.markdown(f"  - *{action.rationale}*")
         
-        if short_term:
-            st.markdown("#### ⚠️ Short-term Actions")
-            for action in short_term:
+        if medium_priority:
+            st.markdown("#### ⚠️ Medium Priority")
+            for action in medium_priority:
                 st.markdown(f"- **{action.action}**")
+                if action.rationale:
+                    st.markdown(f"  - *{action.rationale}*")
         
-        if monitoring:
-            st.markdown("#### 📊 Monitoring")
-            for action in monitoring:
+        if low_priority:
+            st.markdown("#### 📊 Monitoring/Follow-up")
+            for action in low_priority:
                 st.markdown(f"- {action.action}")
+    
+    # Key evidence
+    if result.key_evidence:
+        st.markdown("### 🔍 Key Evidence")
+        for evidence in result.key_evidence:
+            st.markdown(f"- {evidence}")
     
     # Causality assessment
     if result.causality:
         st.markdown("### 🔬 Causality Assessment")
-        st.markdown(f"**Likelihood:** {result.causality.likelihood.value.title()}")
+        st.markdown(f"**Likelihood:** {result.causality.likelihood.value}")
+        st.markdown(f"**Reasoning:** {result.causality.reasoning}")
         if result.causality.supporting_factors:
             st.markdown("**Supporting Factors:**")
             for factor in result.causality.supporting_factors:
                 st.markdown(f"- ✅ {factor}")
-        if result.causality.opposing_factors:
-            st.markdown("**Opposing Factors:**")
-            for factor in result.causality.opposing_factors:
+        if result.causality.against_factors:
+            st.markdown("**Factors Against irAE:**")
+            for factor in result.causality.against_factors:
                 st.markdown(f"- ❌ {factor}")
+        if result.causality.alternative_causes:
+            st.markdown("**Alternative Causes to Consider:**")
+            for cause in result.causality.alternative_causes:
+                st.markdown(f"- {cause}")
     
     # Disclaimer
     st.markdown("---")
