@@ -1,6 +1,7 @@
 """Sample Cases page with categorized clinical scenarios for demonstration."""
 
 import streamlit as st
+import asyncio
 from datetime import datetime
 import sys
 from pathlib import Path
@@ -434,7 +435,14 @@ def analyze_case(case_data: dict):
             
             # Run assessment (rule-based only for demo)
             engine = IRAEAssessmentEngine(llm_client=None, use_llm=False)
-            result = engine.assess(patient_data)
+            
+            # Handle async assess method
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                result = loop.run_until_complete(engine.assess(patient_data))
+            finally:
+                loop.close()
             
             # Store results
             st.session_state.selected_case = case_data
