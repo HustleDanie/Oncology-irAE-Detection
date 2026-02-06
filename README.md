@@ -7,6 +7,7 @@ sdk: docker
 app_port: 7860
 pinned: false
 license: mit
+suggested_hardware: t4-small
 ---
 
 # 🏥 Oncology irAE Clinical Safety Assistant
