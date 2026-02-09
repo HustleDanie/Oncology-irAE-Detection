@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     
     # LLM Configuration
-    llm_provider: str = Field(default="openai", description="LLM provider: openai, anthropic, or huggingface")
+    llm_provider: str = Field(default="huggingface", description="LLM provider: openai, anthropic, or huggingface")
     
     # API-based LLMs
     openai_api_key: Optional[str] = Field(default=None, description="OpenAI API key")
