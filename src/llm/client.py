@@ -106,6 +106,25 @@ class HuggingFaceClient(BaseLLMClient):
         self._pipeline = None
         self._tokenizer = None
         self._hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+        self._model_loaded = False
+        self._loading_error = None
+    
+    def is_model_loaded(self) -> bool:
+        """Check if the model has been loaded."""
+        return self._model_loaded
+    
+    def get_loading_error(self) -> str:
+        """Get any error that occurred during model loading."""
+        return self._loading_error
+    
+    def initialize_model(self):
+        """Explicitly initialize the model (non-lazy loading)."""
+        try:
+            self._get_pipeline()
+            return True
+        except Exception as e:
+            self._loading_error = str(e)
+            return False
 
     def _get_pipeline(self, model_key: str = None):
         """Lazy initialization of Hugging Face pipeline for MedGemma."""
@@ -149,13 +168,16 @@ class HuggingFaceClient(BaseLLMClient):
                     model=model,
                     tokenizer=self._tokenizer,
                 )
+                self._model_loaded = True
                 print(f"MedGemma model loaded successfully.")
                 
             except ImportError as e:
+                self._loading_error = str(e)
                 raise ImportError(
                     f"Hugging Face packages required. Install with: pip install transformers torch accelerate sentencepiece bitsandbytes\nError: {e}"
                 )
             except Exception as e:
+                self._loading_error = str(e)
                 raise RuntimeError(f"Failed to load MedGemma model: {e}")
         return self._pipeline
 

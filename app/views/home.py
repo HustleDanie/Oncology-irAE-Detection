@@ -133,16 +133,31 @@ def render():
 
 def _show_model_status():
     """Show the AI model status indicator."""
+    from src.llm.client import HuggingFaceClient
+    
     llm_client = st.session_state.get("llm_client", None)
     hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
     
     col1, col2 = st.columns([3, 1])
     
     with col2:
-        if llm_client is not None:
-            st.success("🤖 **MedGemma Active**")
+        # Check if client exists and is HuggingFaceClient with model loaded
+        if llm_client is not None and isinstance(llm_client, HuggingFaceClient):
+            if llm_client.is_model_loaded():
+                st.success("🤖 **MedGemma Active**")
+            elif llm_client.get_loading_error():
+                st.error("❌ **Model Error**")
+                with st.expander("View Error"):
+                    st.code(llm_client.get_loading_error())
+            else:
+                st.info("🔄 **Model Available**")
+                st.caption("Model loads on first analysis")
+        elif llm_client is not None:
+            # Other LLM client (OpenAI, Anthropic)
+            st.success("🤖 **LLM Active**")
         elif hf_token:
-            st.info("🔄 **Model Loading...**")
+            st.info("🔄 **Ready to Load**")
+            st.caption("Model loads on first analysis")
         else:
             st.warning("⚡ **Rule-Based Mode**")
             with st.expander("ℹ️ About Analysis Modes"):
