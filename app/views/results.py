@@ -154,6 +154,58 @@ def render_summary_tab(result):
             st.markdown(f"{i}. {evidence}")
     else:
         st.info("No specific evidence points highlighted")
+    
+    # Confidence Score
+    if result.confidence_score:
+        st.markdown("---")
+        st.markdown("### 📊 Assessment Confidence")
+        
+        conf = result.confidence_score
+        
+        # Overall confidence with color coding
+        confidence_colors = {
+            "High": "green",
+            "Moderate": "orange",
+            "Low": "red",
+            "Very Low": "darkred",
+        }
+        level = conf.confidence_level
+        color = confidence_colors.get(level, "gray")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric(
+                label="Overall Confidence",
+                value=f"{conf.overall_confidence:.0%}",
+                delta=level
+            )
+        
+        with col2:
+            st.metric(
+                label="Evidence Strength",
+                value=f"{conf.evidence_strength:.0%}"
+            )
+        
+        with col3:
+            st.metric(
+                label="Data Completeness",
+                value=f"{conf.data_completeness:.0%}"
+            )
+        
+        # Show details in expander
+        with st.expander("View confidence details"):
+            if conf.confidence_factors:
+                st.markdown("**✅ Factors supporting confidence:**")
+                for factor in conf.confidence_factors:
+                    st.markdown(f"- {factor}")
+            
+            if conf.uncertainty_factors:
+                st.markdown("**⚠️ Factors reducing confidence:**")
+                for factor in conf.uncertainty_factors:
+                    st.markdown(f"- {factor}")
+            
+            st.markdown(f"**Rule matches:** {conf.rule_match_count} organ-specific patterns detected")
 
 
 def render_organ_systems_tab(result):

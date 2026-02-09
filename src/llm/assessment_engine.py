@@ -11,6 +11,7 @@ from ..models.assessment import (
     CausalityAssessment,
     OrganSystemFinding,
     RecommendedAction,
+    ConfidenceScore,
     Likelihood,
     Severity,
     Urgency,
@@ -25,6 +26,8 @@ from ..analyzers import (
     SkinAnalyzer,
     NeuroAnalyzer,
     CardiacAnalyzer,
+    RenalAnalyzer,
+    HematologicAnalyzer,
 )
 from ..parsers.note_parser import NoteParser
 from .client import BaseLLMClient
@@ -63,6 +66,8 @@ class IRAEAssessmentEngine:
             SkinAnalyzer(),
             NeuroAnalyzer(),
             CardiacAnalyzer(),
+            RenalAnalyzer(),
+            HematologicAnalyzer(),
         ]
     
     async def assess(self, patient_data: PatientData) -> IRAEAssessment:
@@ -97,6 +102,7 @@ class IRAEAssessmentEngine:
         irae_detected = any(f.detected for f in organ_findings)
         
         # Step 5: Use LLM for final reasoning if available
+        used_llm = False
         print(f"[ASSESSMENT] use_llm={self.use_llm}, llm_client={self.llm_client is not None}")
         if self.use_llm and self.llm_client:
             try:
@@ -110,6 +116,7 @@ class IRAEAssessmentEngine:
                     irae_detected,
                     llm_assessment,
                 )
+                used_llm = True
                 print("[ASSESSMENT] Using LLM-enhanced assessment")
             except Exception as e:
                 # Fall back to rule-based only
@@ -120,6 +127,15 @@ class IRAEAssessmentEngine:
         else:
             print("[ASSESSMENT] Using rule-based assessment (no LLM)")
             assessment = self._create_rule_based_assessment(immunotherapy_context, organ_findings, irae_detected)
+
+        # Step 6: Calculate and attach confidence score
+        confidence_score = self._calculate_confidence_score(
+            patient_data=patient_data,
+            organ_findings=organ_findings,
+            immunotherapy_context=immunotherapy_context,
+            used_llm=used_llm,
+        )
+        assessment.confidence_score = confidence_score
 
         return assessment
     
@@ -140,6 +156,107 @@ class IRAEAssessmentEngine:
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             model_key=model_key
+        )
+
+    def _calculate_confidence_score(
+        self,
+        patient_data: PatientData,
+        organ_findings: list[OrganSystemFinding],
+        immunotherapy_context: ImmunotherapyContext,
+        used_llm: bool = False,
+    ) -> ConfidenceScore:
+        """
+        Calculate confidence scores for the assessment.
+        
+        Factors considered:
+        - Data completeness (labs, vitals, notes, medications)
+        - Evidence strength from organ findings
+        - Number of matching detection rules
+        - LLM enhancement if used
+        """
+        confidence_factors = []
+        uncertainty_factors = []
+        
+        # 1. Calculate data completeness (0-1)
+        data_points = 0
+        max_data_points = 4  # Labs, vitals, notes, medications
+        
+        if patient_data.labs and len(patient_data.labs) > 0:
+            data_points += 1
+            confidence_factors.append(f"Lab data available ({len(patient_data.labs)} results)")
+        else:
+            uncertainty_factors.append("No laboratory data provided")
+        
+        if patient_data.vitals and len(patient_data.vitals) > 0:
+            data_points += 1
+            confidence_factors.append("Vital signs available")
+        else:
+            uncertainty_factors.append("No vital signs provided")
+        
+        if patient_data.notes and len(patient_data.notes) > 0:
+            data_points += 1
+            confidence_factors.append(f"Clinical notes available ({len(patient_data.notes)} notes)")
+        else:
+            uncertainty_factors.append("No clinical notes provided")
+        
+        if patient_data.medications and len(patient_data.medications) > 0:
+            data_points += 1
+            confidence_factors.append(f"Medication list available ({len(patient_data.medications)} meds)")
+        else:
+            uncertainty_factors.append("No medication data provided")
+        
+        data_completeness = data_points / max_data_points
+        
+        # 2. Calculate evidence strength from findings (0-1)
+        rule_match_count = 0
+        evidence_scores = []
+        
+        for finding in organ_findings:
+            if finding.detected:
+                rule_match_count += 1
+                # Each detected finding contributes to evidence strength
+                finding_confidence = finding.confidence if finding.confidence else 0.5
+                evidence_scores.append(finding_confidence)
+                
+                if finding.severity in [Severity.GRADE_3, Severity.GRADE_4]:
+                    confidence_factors.append(f"Clear {finding.system.value} severity indicators")
+        
+        evidence_strength = sum(evidence_scores) / len(evidence_scores) if evidence_scores else 0.3
+        
+        # 3. Immunotherapy context factors
+        if immunotherapy_context.on_immunotherapy:
+            confidence_factors.append("Immunotherapy status confirmed")
+            if immunotherapy_context.agents:
+                confidence_factors.append(f"Specific agents identified: {', '.join(immunotherapy_context.agents[:2])}")
+        else:
+            uncertainty_factors.append("No immunotherapy detected - irAE less likely")
+        
+        # 4. LLM enhancement bonus
+        if used_llm:
+            confidence_factors.append("LLM-enhanced clinical reasoning applied")
+            evidence_strength = min(1.0, evidence_strength + 0.1)
+        
+        # 5. Calculate overall confidence
+        # Weighted average: data completeness (40%), evidence strength (60%)
+        overall_confidence = (0.4 * data_completeness) + (0.6 * evidence_strength)
+        
+        # Adjust for edge cases
+        if rule_match_count == 0:
+            overall_confidence *= 0.5  # Lower confidence if no rules matched
+            uncertainty_factors.append("No organ-specific irAE patterns detected")
+        
+        if len(uncertainty_factors) > 3:
+            overall_confidence *= 0.8  # Penalty for multiple uncertainties
+        
+        overall_confidence = max(0.1, min(1.0, overall_confidence))  # Clamp to 0.1-1.0
+        
+        return ConfidenceScore(
+            overall_confidence=round(overall_confidence, 2),
+            evidence_strength=round(evidence_strength, 2),
+            data_completeness=round(data_completeness, 2),
+            rule_match_count=rule_match_count,
+            confidence_factors=confidence_factors,
+            uncertainty_factors=uncertainty_factors,
         )
 
     def _merge_assessments(
@@ -319,7 +436,12 @@ class IRAEAssessmentEngine:
             return Urgency.SOON
         
         # Check for particularly concerning organ systems
-        concerning_systems = [OrganSystem.CARDIAC, OrganSystem.NEUROLOGIC, OrganSystem.PULMONARY]
+        concerning_systems = [
+            OrganSystem.CARDIAC, 
+            OrganSystem.NEUROLOGIC, 
+            OrganSystem.PULMONARY,
+            OrganSystem.HEMATOLOGIC,  # Can indicate HLH or severe cytopenias
+        ]
         for finding in findings:
             if finding.detected and finding.system in concerning_systems:
                 return Urgency.URGENT
@@ -397,6 +519,30 @@ class IRAEAssessmentEngine:
                     action="Check troponin, BNP, and obtain EKG",
                     priority=1,
                     rationale="Cardiac irAEs can be life-threatening",
+                ))
+            
+            elif finding.system == OrganSystem.RENAL:
+                actions.append(RecommendedAction(
+                    action="Check renal function (BUN, creatinine, urinalysis with microscopy)",
+                    priority=2,
+                    rationale="Monitor for immune-related nephritis",
+                ))
+                actions.append(RecommendedAction(
+                    action="Consider nephrology consultation if creatinine rising",
+                    priority=2,
+                    rationale="Early nephrology input may prevent progression",
+                ))
+            
+            elif finding.system == OrganSystem.HEMATOLOGIC:
+                actions.append(RecommendedAction(
+                    action="Check CBC with differential, reticulocyte count, LDH, haptoglobin",
+                    priority=2,
+                    rationale="Evaluate for immune-related cytopenias",
+                ))
+                actions.append(RecommendedAction(
+                    action="Consider hematology consultation for severe cytopenias",
+                    priority=2,
+                    rationale="May need bone marrow biopsy or specialized treatment",
                 ))
         
         # General action

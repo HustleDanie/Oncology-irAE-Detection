@@ -37,7 +37,24 @@ No fever""",
             "notes": """Patient on cycle 4 of pembrolizumab for stage IIIC melanoma.
 Reports onset of loose stools 4 days ago, now having 5-6 episodes daily.
 Mild periumbilical cramping. No mucus or blood. Appetite slightly decreased.
-No recent antibiotic use. No sick contacts."""
+No recent antibiotic use. No sick contacts.""",
+            # EXPECTED OUTCOME - clinically validated based on CTCAE v5.0 and ASCO guidelines
+            "expected_outcome": {
+                "urgency": "🟡 Needs oncology review soon",  # Grade 2 = review soon, not emergency
+                "severity": "Grade 2 - Moderate",  # 4-6 stools/day over baseline = Grade 2
+                "irae_detected": True,
+                "affected_systems": ["Gastrointestinal"],
+                "likelihood": "Possible",  # On ICI with typical presentation
+                "key_actions": [
+                    "Hold immunotherapy pending evaluation",
+                    "Start oral corticosteroids (prednisone 1mg/kg)",
+                    "Stool studies to rule out infectious etiology"
+                ],
+                "clinical_rationale": """CTCAE Grade 2 Diarrhea: 4-6 stools/day over baseline.
+Patient has 5-6 loose stools daily = Grade 2. No blood (not Grade 3+).
+Onset during pembrolizumab treatment with no alternative cause identified.
+ASCO guidelines recommend holding ICI and starting corticosteroids for Grade 2 colitis."""
+            }
         },
         "Grade 3 - Severe Colitis": {
             "description": "65-year-old female on nivolumab with severe diarrhea and bloody stools",
@@ -60,7 +77,27 @@ Dehydration signs""",
             "notes": """Patient on nivolumab for metastatic NSCLC.
 Severe watery diarrhea started 1 week ago, now with visible blood.
 Diffuse abdominal tenderness on exam. Signs of dehydration.
-Started low-dose prednisone 2 days ago without improvement."""
+Started low-dose prednisone 2 days ago without improvement.""",
+            # EXPECTED OUTCOME
+            "expected_outcome": {
+                "urgency": "🟠 Urgent (same day)",  # Grade 3 = urgent evaluation
+                "severity": "Grade 3 - Severe",  # ≥7 stools/day + bloody = Grade 3
+                "irae_detected": True,
+                "affected_systems": ["Gastrointestinal"],
+                "likelihood": "Highly likely",  # Classic presentation, failed low-dose steroids
+                "key_actions": [
+                    "Hospitalize for IV corticosteroids",
+                    "Discontinue immunotherapy",
+                    "GI consultation for possible colonoscopy",
+                    "IV fluids and electrolyte replacement",
+                    "Consider infliximab if no response in 48-72h"
+                ],
+                "clinical_rationale": """CTCAE Grade 3 Diarrhea: ≥7 stools/day over baseline, OR
+hospitalization indicated, OR bloody diarrhea.
+Patient has 8-10 stools + blood + dehydration + fever = Grade 3.
+Failed low-dose steroids = need for high-dose IV steroids.
+ASCO guidelines: Grade 3 colitis requires hospitalization, IV steroids."""
+            }
         },
     },
     "🟠 Hepatotoxicity": {
@@ -84,7 +121,27 @@ No abdominal pain""",
             "notes": """Routine labs show AST/ALT elevation >3x ULN.
 Patient asymptomatic except for mild fatigue.
 No alcohol use. No new medications.
-Viral hepatitis panel pending."""
+Viral hepatitis panel pending.""",
+            # EXPECTED OUTCOME
+            "expected_outcome": {
+                "urgency": "🟡 Needs oncology review soon",  # Grade 2 = review soon
+                "severity": "Grade 2 - Moderate",  # AST/ALT >3-5x ULN = Grade 2
+                "irae_detected": True,
+                "affected_systems": ["Hepatic"],
+                "likelihood": "Possible",  # Typical presentation, need to rule out other causes
+                "key_actions": [
+                    "Hold immunotherapy",
+                    "Rule out viral hepatitis (HAV, HBV, HCV)",
+                    "Check hepatotoxic medication list",
+                    "Consider starting prednisone 0.5-1 mg/kg",
+                    "Recheck LFTs in 3-5 days"
+                ],
+                "clinical_rationale": """CTCAE Grade 2 Hepatitis: AST/ALT >3-5x ULN.
+AST 156 (baseline 28) = 5.6x baseline ≈ 3.9x ULN (ULN~40).
+ALT 189 (baseline 32) = 5.9x baseline ≈ 4.7x ULN.
+Bilirubin mildly elevated. INR normal (no synthetic dysfunction).
+ASCO: Hold ICI, consider steroids for Grade 2 hepatitis."""
+            }
         },
         "Grade 3 - Severe Hepatitis": {
             "description": "48-year-old female on ipilimumab/nivolumab with severe hepatitis",
@@ -108,7 +165,27 @@ Right upper quadrant discomfort""",
             "notes": """Patient on combination immunotherapy for metastatic melanoma.
 Developed jaundice over past week. AST/ALT >10x ULN.
 Hepatitis panel negative. No hepatotoxic medications.
-Ultrasound shows no biliary obstruction."""
+Ultrasound shows no biliary obstruction.""",
+            # EXPECTED OUTCOME
+            "expected_outcome": {
+                "urgency": "🟠 Urgent (same day)",  # Grade 3 = urgent
+                "severity": "Grade 3 - Severe",  # AST/ALT >5-20x ULN = Grade 3
+                "irae_detected": True,
+                "affected_systems": ["Hepatic"],
+                "likelihood": "Highly likely",  # Combination ICI, classic presentation
+                "key_actions": [
+                    "Permanently discontinue immunotherapy",
+                    "Hospitalize for IV methylprednisolone 1-2 mg/kg",
+                    "Monitor INR daily (hepatic synthetic function)",
+                    "Hepatology consultation",
+                    "Consider mycophenolate if no response in 3 days"
+                ],
+                "clinical_rationale": """CTCAE Grade 3 Hepatitis: AST/ALT >5-20x ULN.
+AST 485 ≈ 12x ULN, ALT 612 ≈ 15x ULN = Grade 3.
+Elevated bilirubin with jaundice = more severe.
+INR 1.4 = early synthetic dysfunction (concerning).
+Combination ICI has 25-30% hepatitis rate. ASCO: IV steroids required."""
+            }
         },
     },
     "🔵 Pneumonitis": {
@@ -131,7 +208,27 @@ O2 saturation: 94% on room air""",
             "notes": """Post-chemoradiation consolidation durvalumab.
 New dry cough and exertional dyspnea x 2 weeks.
 CT chest shows new bilateral ground-glass opacities.
-No infectious symptoms. Sputum culture negative."""
+No infectious symptoms. Sputum culture negative.""",
+            # EXPECTED OUTCOME
+            "expected_outcome": {
+                "urgency": "🟡 Needs oncology review soon",  # Grade 2 = review soon
+                "severity": "Grade 2 - Moderate",  # Symptomatic, limiting ADLs, but not hypoxic
+                "irae_detected": True,
+                "affected_systems": ["Pulmonary"],
+                "likelihood": "Highly likely",  # Post-RT durvalumab = high risk
+                "key_actions": [
+                    "Hold durvalumab",
+                    "Start prednisone 1-2 mg/kg daily",
+                    "Bronchoscopy with BAL if diagnostic uncertainty",
+                    "Pulmonary function tests",
+                    "Follow-up CT in 3-4 weeks"
+                ],
+                "clinical_rationale": """CTCAE Grade 2 Pneumonitis: Symptomatic, medical intervention
+indicated, limiting instrumental ADL.
+Patient has dyspnea on exertion with O2 sat 94% (borderline).
+Bilateral GGO on CT + negative infection workup = likely ICI pneumonitis.
+Durvalumab post-CRT has 10-15% pneumonitis rate. ASCO: Hold ICI, start steroids."""
+            }
         },
         "Grade 3 - Severe Pneumonitis": {
             "description": "71-year-old female with severe respiratory distress on pembrolizumab",
@@ -154,7 +251,29 @@ No fever""",
             "notes": """Patient on pembrolizumab for stage IV NSCLC.
 Progressive dyspnea over 1 week, now requiring 4L O2.
 CT shows extensive bilateral GGO and consolidation.
-BAL cultures negative. Considering ICU transfer."""
+BAL cultures negative. Considering ICU transfer.""",
+            # EXPECTED OUTCOME
+            "expected_outcome": {
+                "urgency": "🔴 Emergency evaluation",  # Grade 3 pneumonitis = emergency
+                "severity": "Grade 3 - Severe",  # O2 required, severe symptoms
+                "irae_detected": True,
+                "affected_systems": ["Pulmonary"],
+                "likelihood": "Highly likely",
+                "key_actions": [
+                    "Permanently discontinue pembrolizumab",
+                    "IV methylprednisolone 2-4 mg/kg/day",
+                    "ICU admission for monitoring",
+                    "Consider infliximab or mycophenolate if refractory",
+                    "Bronchoscopy with BAL if not done",
+                    "Pulmonology and critical care consultation"
+                ],
+                "clinical_rationale": """CTCAE Grade 3 Pneumonitis: Severe symptoms, O2 indicated,
+limiting self-care ADL.
+PaO2 58 on 4L = significant hypoxemia. Tachypnea RR 28.
+Extensive bilateral GGO = severe radiographic involvement.
+Low procalcitonin + negative cultures = favors non-infectious.
+ASCO: Hospitalize, high-dose IV steroids, consider ICU."""
+            }
         },
     },
     "🟡 Endocrine": {
@@ -177,7 +296,26 @@ Dry skin""",
             "notes": """Patient on nivolumab for metastatic RCC.
 Progressive fatigue and weight gain over past month.
 TSH markedly elevated with low free T4.
-Classic hypothyroid symptoms present."""
+Classic hypothyroid symptoms present.""",
+            # EXPECTED OUTCOME
+            "expected_outcome": {
+                "urgency": "🟡 Needs oncology review soon",  # Hypothyroid = not emergency
+                "severity": "Grade 2 - Moderate",  # Symptomatic hypothyroidism = Grade 2
+                "irae_detected": True,
+                "affected_systems": ["Endocrine"],
+                "likelihood": "Highly likely",  # Anti-TPO positive, classic presentation
+                "key_actions": [
+                    "Start levothyroxine replacement",
+                    "Can continue immunotherapy",
+                    "Recheck TSH in 6-8 weeks",
+                    "Endocrinology referral if needed"
+                ],
+                "clinical_rationale": """Immune-related hypothyroidism is common (5-10% with PD-1).
+TSH 28.5 with low free T4 = overt primary hypothyroidism.
+Anti-TPO positive = autoimmune thyroiditis from ICI.
+Unlike other irAEs, hypothyroidism does NOT require holding ICI.
+Simply start thyroid hormone replacement and continue treatment."""
+            }
         },
         "Hypophysitis": {
             "description": "62-year-old male on ipilimumab with headache and fatigue",
@@ -202,7 +340,29 @@ Dizziness on standing""",
             "notes": """Patient after 4th dose of ipilimumab for melanoma.
 New severe headache and fatigue over past week.
 Labs show panhypopituitarism pattern.
-MRI pituitary shows enlarged gland with heterogeneous enhancement."""
+MRI pituitary shows enlarged gland with heterogeneous enhancement.""",
+            # EXPECTED OUTCOME
+            "expected_outcome": {
+                "urgency": "🟠 Urgent (same day)",  # Adrenal insufficiency = urgent
+                "severity": "Grade 3 - Severe",  # Panhypopituitarism with low cortisol = severe
+                "irae_detected": True,
+                "affected_systems": ["Endocrine"],
+                "likelihood": "Highly likely",  # Classic ipilimumab hypophysitis
+                "key_actions": [
+                    "IMMEDIATE stress-dose hydrocortisone (100mg IV)",
+                    "Hold immunotherapy",
+                    "Endocrinology consultation urgent",
+                    "Start hormone replacement (cortisol first, then thyroid)",
+                    "MRI pituitary if not done",
+                    "Monitor for adrenal crisis"
+                ],
+                "clinical_rationale": """Ipilimumab causes hypophysitis in 5-10% (CTLA-4 specific).
+Low cortisol (2.1) with low ACTH (5) = secondary adrenal insufficiency.
+Panhypopituitarism pattern = multiple axis involvement.
+CRITICAL: Cortisol deficiency is life-threatening.
+Must give hydrocortisone BEFORE levothyroxine (can precipitate crisis).
+MRI showing enlarged pituitary confirms diagnosis."""
+            }
         },
     },
     "🟣 Dermatologic": {
@@ -226,7 +386,27 @@ No blistering""",
             "notes": """Patient on cycle 3 of pembrolizumab for TNBC.
 Developed pruritic rash 10 days after last infusion.
 Erythematous maculopapular eruption on trunk and arms.
-No fever, no mucosal involvement, no bullae."""
+No fever, no mucosal involvement, no bullae.""",
+            # EXPECTED OUTCOME
+            "expected_outcome": {
+                "urgency": "🟡 Needs oncology review soon",  # Grade 2 rash = review soon
+                "severity": "Grade 2 - Moderate",  # BSA 10-30% or affecting function = Grade 2
+                "irae_detected": True,
+                "affected_systems": ["Dermatologic"],
+                "likelihood": "Possible",  # Typical ICI rash pattern
+                "key_actions": [
+                    "Can continue immunotherapy with monitoring",
+                    "Medium-potency topical steroids (triamcinolone 0.1%)",
+                    "Oral antihistamines for pruritus",
+                    "Dermatology referral if not improving",
+                    "Consider oral prednisone if worsening"
+                ],
+                "clinical_rationale": """CTCAE Grade 2 Rash: BSA 10-30%, or limiting instrumental ADL.
+BSA 35% involvement = Grade 2 (some systems call >30% Grade 3).
+No mucosal involvement, no bullae = reassuring (not SJS/TEN).
+Eosinophilia (8%) supports immune-mediated etiology.
+ASCO: Grade 2 rash can often continue ICI with supportive care."""
+            }
         },
         "Grade 3 - Severe Bullous Dermatitis": {
             "description": "58-year-old male with severe skin reaction on combination therapy",
@@ -249,7 +429,31 @@ Fever - 38.5°C""",
 Severe bullous dermatitis developed over 5 days.
 Multiple tense bullae on trunk and extremities.
 Oral erosions present. Dermatology consulted.
-Concern for bullous pemphigoid vs SJS."""
+Concern for bullous pemphigoid vs SJS.""",
+            # EXPECTED OUTCOME
+            "expected_outcome": {
+                "urgency": "🔴 Emergency evaluation",  # Bullous + mucosal = emergency
+                "severity": "Grade 3 - Severe",  # BSA >30% with bullae = Grade 3
+                "irae_detected": True,
+                "affected_systems": ["Dermatologic"],
+                "likelihood": "Highly likely",  # Combination ICI, classic pattern
+                "key_actions": [
+                    "Permanently discontinue immunotherapy",
+                    "Hospitalize",
+                    "Dermatology and burn unit consultation",
+                    "Skin biopsy for histology",
+                    "IV methylprednisolone 1-2 mg/kg",
+                    "Rule out SJS/TEN (if mucosa involved, consider IVIG)",
+                    "Wound care protocol"
+                ],
+                "clinical_rationale": """CTCAE Grade 3 Rash: BSA >30%, OR severe symptoms, OR
+limiting self-care ADL.
+Bullous eruption with >50% BSA = Grade 3-4.
+CRITICAL: Mucosal involvement raises concern for SJS/TEN.
+SJS/TEN is life-threatening, requires burn unit care.
+Fever + mucosal involvement = high concern for severe SCAR.
+ASCO: Permanently discontinue ICI, aggressive management."""
+            }
         },
     },
     "⚫ Neurologic": {
@@ -273,7 +477,30 @@ Fatigue worse with activity""",
 Developed ptosis and diplopia over 1 week.
 Fatigable weakness on exam. Ice pack test positive.
 AChR antibodies positive. Concerned for irAE MG.
-Monitor for respiratory involvement."""
+Monitor for respiratory involvement.""",
+            # EXPECTED OUTCOME
+            "expected_outcome": {
+                "urgency": "🟠 Urgent (same day)",  # MG with dysphagia = urgent
+                "severity": "Grade 2 - Moderate",  # Moderate symptoms, no resp failure
+                "irae_detected": True,
+                "affected_systems": ["Neurologic"],
+                "likelihood": "Highly likely",  # AChR Ab positive
+                "key_actions": [
+                    "Permanently discontinue nivolumab",
+                    "Neurology consultation urgent",
+                    "Serial FVC monitoring (MG crisis risk)",
+                    "Check troponin daily (concurrent myocarditis risk)",
+                    "Start prednisone 1 mg/kg",
+                    "Pyridostigmine for symptomatic relief",
+                    "ICU monitoring if any respiratory symptoms"
+                ],
+                "clinical_rationale": """ICI-related MG is rare (<1%) but life-threatening.
+AChR Ab positive + anti-striated muscle Ab = classic irAE MG.
+CRITICAL: Anti-striated muscle Ab = 20-40% concurrent myocarditis risk.
+Elevated troponin 0.08 = concerning, need cardiac workup.
+Dysphagia indicates bulbar involvement (aspiration risk).
+ASCO: Permanent ICI discontinuation, steroids, monitor for crisis."""
+            }
         },
         "Encephalitis": {
             "description": "54-year-old female with confusion and seizure on pembrolizumab",
@@ -296,7 +523,30 @@ Personality change""",
 Acute confusion and witnessed seizure 3 days ago.
 MRI shows bilateral medial temporal lobe T2 hyperintensity.
 LP shows lymphocytic pleocytosis. Autoimmune encephalitis workup sent.
-Started high-dose steroids."""
+Started high-dose steroids.""",
+            # EXPECTED OUTCOME
+            "expected_outcome": {
+                "urgency": "🔴 Emergency evaluation",  # Encephalitis = emergency
+                "severity": "Grade 3 - Severe",  # Seizure + confusion = Grade 3-4
+                "irae_detected": True,
+                "affected_systems": ["Neurologic"],
+                "likelihood": "Highly likely",  # Classic presentation
+                "key_actions": [
+                    "Permanently discontinue pembrolizumab",
+                    "Continue IV methylprednisolone 1g daily x 3-5 days",
+                    "Neurology consultation urgent",
+                    "EEG monitoring (seizure risk)",
+                    "Autoimmune encephalitis panel (anti-NMDA, LGI1, CASPR2, etc.)",
+                    "Consider IVIG or plasmapheresis if steroid-refractory",
+                    "ICU admission for neuro monitoring"
+                ],
+                "clinical_rationale": """Immune-related encephalitis is rare but serious.
+Bilateral medial temporal hyperintensity = limbic encephalitis pattern.
+Lymphocytic pleocytosis + elevated protein = inflammatory CSF.
+Normal glucose argues against infectious meningitis.
+Seizure indicates severe involvement (Grade 3-4).
+ASCO: High-dose steroids, consider IVIG if refractory."""
+            }
         },
     },
     "❤️ Cardiac": {
@@ -322,7 +572,32 @@ Orthopnea""",
 Chest pain and dyspnea started 5 days ago.
 ECG shows diffuse ST changes and low voltage.
 Echo shows EF 35% (baseline 60%). Troponin elevated.
-Urgent cardiology consult for suspected ICI myocarditis."""
+Urgent cardiology consult for suspected ICI myocarditis.""",
+            # EXPECTED OUTCOME
+            "expected_outcome": {
+                "urgency": "🔴 Emergency evaluation",  # Myocarditis = EMERGENCY
+                "severity": "Grade 4 - Life-threatening",  # EF drop + troponin elevation
+                "irae_detected": True,
+                "affected_systems": ["Cardiac"],
+                "likelihood": "Highly likely",
+                "key_actions": [
+                    "IMMEDIATE permanent discontinuation of all ICIs",
+                    "ICU admission with continuous telemetry",
+                    "IV methylprednisolone 1g daily",
+                    "Cardiology consultation emergent",
+                    "Serial troponin and BNP monitoring",
+                    "Consider cardiac MRI if stable",
+                    "Hold beta-blockers if hemodynamically unstable",
+                    "Have IVIG, plasmapheresis, and mycophenolate ready"
+                ],
+                "clinical_rationale": """ICI myocarditis has 25-50% mortality rate - MOST LETHAL irAE.
+Troponin 2.8 ng/mL = significant myocardial injury.
+EF drop from 60% to 35% = severe cardiac dysfunction.
+Combination ICI has higher myocarditis risk (0.5-1.5% vs 0.1% mono).
+ECG changes (ST changes, low voltage) = active inflammation.
+Elevated CK can indicate concurrent myositis (MG overlap risk).
+ASCO: This is a medical emergency. High-dose steroids immediately."""
+            }
         },
     },
 }
@@ -385,6 +660,28 @@ def render():
                                 key=f"notes_{case_data['patient_id']}",
                                 label_visibility="collapsed"
                             )
+                        
+                        # Show expected outcome
+                        if "expected_outcome" in case_data:
+                            st.markdown("---")
+                            st.markdown("### ✅ Expected Outcome (Ground Truth)")
+                            expected = case_data["expected_outcome"]
+                            
+                            exp_col1, exp_col2 = st.columns(2)
+                            with exp_col1:
+                                st.markdown(f"**🚨 Expected Urgency:** {expected['urgency']}")
+                                st.markdown(f"**📊 Expected Severity:** {expected['severity']}")
+                                st.markdown(f"**🎯 irAE Expected:** {'Yes' if expected['irae_detected'] else 'No'}")
+                                st.markdown(f"**🏥 Affected Systems:** {', '.join(expected['affected_systems'])}")
+                                st.markdown(f"**🔬 Likelihood:** {expected['likelihood']}")
+                            
+                            with exp_col2:
+                                st.markdown("**📋 Expected Key Actions:**")
+                                for action in expected['key_actions'][:4]:
+                                    st.markdown(f"- {action}")
+                            
+                            with st.expander("📚 Clinical Rationale"):
+                                st.markdown(expected['clinical_rationale'])
                     
                     with col2:
                         st.markdown("###")
@@ -490,6 +787,125 @@ def display_case_results():
         <h3 style="margin: 0;">{icon} {urgency_value}</h3>
     </div>
     """, unsafe_allow_html=True)
+    
+    # ========================================================================
+    # VALIDATION COMPARISON: Expected vs Actual
+    # ========================================================================
+    if "expected_outcome" in case:
+        expected = case["expected_outcome"]
+        
+        st.markdown("---")
+        st.markdown("## 🔍 Validation: Expected vs Actual Results")
+        
+        # Calculate matches
+        actual_severity = result.overall_severity.value if result.overall_severity else "Unknown"
+        actual_affected = [f.system.value for f in result.affected_systems if f.detected] if result.affected_systems else []
+        actual_likelihood = result.causality.likelihood.value if result.causality else "Unknown"
+        
+        # Comparison table
+        comp_col1, comp_col2, comp_col3 = st.columns([2, 2, 1])
+        
+        with comp_col1:
+            st.markdown("### Expected (Ground Truth)")
+        with comp_col2:
+            st.markdown("### MedGemma Result")
+        with comp_col3:
+            st.markdown("### Match")
+        
+        # Urgency comparison
+        comp_col1, comp_col2, comp_col3 = st.columns([2, 2, 1])
+        with comp_col1:
+            st.markdown(f"**Urgency:** {expected['urgency']}")
+        with comp_col2:
+            st.markdown(f"**Urgency:** {urgency_value}")
+        with comp_col3:
+            # Check if urgency matches (simplified comparison)
+            expected_urgency_lower = expected['urgency'].lower()
+            actual_urgency_lower = urgency_value.lower()
+            urgency_match = (
+                ("emergency" in expected_urgency_lower and "emergency" in actual_urgency_lower) or
+                ("urgent" in expected_urgency_lower and "urgent" in actual_urgency_lower) or
+                ("soon" in expected_urgency_lower and "soon" in actual_urgency_lower) or
+                ("routine" in expected_urgency_lower and "routine" in actual_urgency_lower)
+            )
+            st.markdown("✅" if urgency_match else "❌")
+        
+        # Severity comparison
+        comp_col1, comp_col2, comp_col3 = st.columns([2, 2, 1])
+        with comp_col1:
+            st.markdown(f"**Severity:** {expected['severity']}")
+        with comp_col2:
+            st.markdown(f"**Severity:** {actual_severity}")
+        with comp_col3:
+            # Extract grade number for comparison
+            expected_grade = None
+            actual_grade = None
+            for g in ["1", "2", "3", "4"]:
+                if f"Grade {g}" in expected['severity']:
+                    expected_grade = g
+                if f"Grade {g}" in actual_severity:
+                    actual_grade = g
+            severity_match = expected_grade == actual_grade
+            st.markdown("✅" if severity_match else "❌")
+        
+        # irAE Detection comparison
+        comp_col1, comp_col2, comp_col3 = st.columns([2, 2, 1])
+        with comp_col1:
+            st.markdown(f"**irAE Detected:** {'Yes' if expected['irae_detected'] else 'No'}")
+        with comp_col2:
+            st.markdown(f"**irAE Detected:** {'Yes' if result.irae_detected else 'No'}")
+        with comp_col3:
+            irae_match = expected['irae_detected'] == result.irae_detected
+            st.markdown("✅" if irae_match else "❌")
+        
+        # Affected Systems comparison
+        comp_col1, comp_col2, comp_col3 = st.columns([2, 2, 1])
+        with comp_col1:
+            st.markdown(f"**Affected Systems:** {', '.join(expected['affected_systems'])}")
+        with comp_col2:
+            st.markdown(f"**Affected Systems:** {', '.join(actual_affected) if actual_affected else 'None'}")
+        with comp_col3:
+            # Check if any expected system is in actual
+            systems_match = any(exp_sys in actual_affected for exp_sys in expected['affected_systems'])
+            st.markdown("✅" if systems_match else "❌")
+        
+        # Likelihood comparison
+        comp_col1, comp_col2, comp_col3 = st.columns([2, 2, 1])
+        with comp_col1:
+            st.markdown(f"**Likelihood:** {expected['likelihood']}")
+        with comp_col2:
+            st.markdown(f"**Likelihood:** {actual_likelihood}")
+        with comp_col3:
+            # Simplified likelihood comparison
+            likelihood_match = (
+                (expected['likelihood'].lower() in actual_likelihood.lower()) or
+                (actual_likelihood.lower() in expected['likelihood'].lower()) or
+                ("highly" in expected['likelihood'].lower() and "highly" in actual_likelihood.lower()) or
+                ("possible" in expected['likelihood'].lower() and "possible" in actual_likelihood.lower())
+            )
+            st.markdown("✅" if likelihood_match else "❌")
+        
+        # Overall match score
+        matches = sum([urgency_match, severity_match, irae_match, systems_match, likelihood_match])
+        total = 5
+        match_percentage = (matches / total) * 100
+        
+        st.markdown("---")
+        match_color = "green" if match_percentage >= 80 else "orange" if match_percentage >= 60 else "red"
+        st.markdown(f"""
+        <div style="background-color: #f0f0f0; padding: 1rem; border-radius: 5px; text-align: center;">
+            <h3 style="margin: 0; color: {match_color};">
+                Validation Score: {matches}/{total} ({match_percentage:.0f}%)
+            </h3>
+            <p style="margin: 0.5rem 0 0 0; color: #666;">
+                {'✅ MedGemma output aligns with expected clinical assessment' if match_percentage >= 80 else 
+                 '⚠️ Some discrepancies - review clinical reasoning' if match_percentage >= 60 else
+                 '❌ Significant mismatch - model may need fine-tuning for this case type'}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("---")
     
     # Summary metrics
     col1, col2, col3, col4 = st.columns(4)

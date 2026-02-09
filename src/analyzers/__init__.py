@@ -8,6 +8,8 @@ from .endocrine_analyzer import EndocrineAnalyzer
 from .skin_analyzer import SkinAnalyzer
 from .neuro_analyzer import NeuroAnalyzer
 from .cardiac_analyzer import CardiacAnalyzer
+from .renal_analyzer import RenalAnalyzer
+from .hematologic_analyzer import HematologicAnalyzer
 from .immunotherapy_detector import ImmunotherapyDetector
 
 __all__ = [
@@ -19,5 +21,7 @@ __all__ = [
     "SkinAnalyzer",
     "NeuroAnalyzer",
     "CardiacAnalyzer",
+    "RenalAnalyzer",
+    "HematologicAnalyzer",
     "ImmunotherapyDetector",
 ]

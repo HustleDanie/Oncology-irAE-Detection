@@ -50,6 +50,57 @@ class OrganSystem(str, Enum):
     OCULAR = "Ocular"
 
 
+class ConfidenceScore(BaseModel):
+    """
+    Confidence scoring for irAE detection.
+    
+    Provides transparency about detection certainty.
+    """
+    
+    overall_confidence: float = Field(
+        ..., 
+        ge=0, 
+        le=1, 
+        description="Overall confidence in the assessment (0-1)"
+    )
+    evidence_strength: float = Field(
+        ..., 
+        ge=0, 
+        le=1, 
+        description="Strength of supporting evidence (0-1)"
+    )
+    data_completeness: float = Field(
+        ..., 
+        ge=0, 
+        le=1, 
+        description="Completeness of input data (0-1)"
+    )
+    rule_match_count: int = Field(
+        default=0, 
+        description="Number of detection rules that matched"
+    )
+    confidence_factors: list[str] = Field(
+        default_factory=list, 
+        description="Factors contributing to confidence"
+    )
+    uncertainty_factors: list[str] = Field(
+        default_factory=list, 
+        description="Factors reducing confidence"
+    )
+    
+    @property
+    def confidence_level(self) -> str:
+        """Get human-readable confidence level."""
+        if self.overall_confidence >= 0.8:
+            return "High"
+        elif self.overall_confidence >= 0.5:
+            return "Moderate"
+        elif self.overall_confidence >= 0.3:
+            return "Low"
+        else:
+            return "Very Low"
+
+
 class OrganSystemFinding(BaseModel):
     """Findings for a specific organ system."""
     
@@ -107,6 +158,11 @@ class IRAEAssessment(BaseModel):
     irae_detected: bool = Field(..., description="Whether possible irAE was detected")
     affected_systems: list[OrganSystemFinding] = Field(
         default_factory=list, description="Findings by organ system"
+    )
+    
+    # Confidence scoring
+    confidence_score: Optional[ConfidenceScore] = Field(
+        None, description="Confidence scoring for this assessment"
     )
     
     # Causality and severity

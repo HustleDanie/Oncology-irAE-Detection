@@ -4,6 +4,7 @@ from .patient import PatientData, LabResult, Medication, VitalSigns, ClinicalNot
 from .assessment import (
     IRAEAssessment,
     OrganSystemFinding,
+    ConfidenceScore,
     Likelihood,
     Severity,
     Urgency,
@@ -17,6 +18,7 @@ __all__ = [
     "ClinicalNote",
     "IRAEAssessment",
     "OrganSystemFinding",
+    "ConfidenceScore",
     "Likelihood",
     "Severity",
     "Urgency",
