@@ -436,11 +436,16 @@ def analyze_case(case_data: dict):
             llm_client = st.session_state.get("llm_client", None)
             use_llm = llm_client is not None
             
+            print(f"[ANALYSIS] LLM client: {type(llm_client).__name__ if llm_client else 'None'}")
+            print(f"[ANALYSIS] Use LLM: {use_llm}")
+            
             # Initialize assessment engine with actual LLM if configured
             engine = IRAEAssessmentEngine(llm_client=llm_client, use_llm=use_llm)
             
             # Run assessment (synchronous wrapper handles async internally)
+            print("[ANALYSIS] Starting assessment...")
             result = engine.assess_sync(patient_data)
+            print("[ANALYSIS] Assessment complete!")
             
             # Store results
             st.session_state.selected_case = case_data

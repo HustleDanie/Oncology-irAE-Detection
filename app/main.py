@@ -21,24 +21,30 @@ def get_llm_client():
     """Initialize and return the appropriate LLM client based on settings."""
     settings = get_settings()
     if "llm_client" not in st.session_state:
+        print(f"[INFO] Initializing LLM client... Provider: {settings.llm_provider}")
         try:
             if settings.llm_provider == "openai" and settings.openai_api_key:
+                print("[INFO] Using OpenAI client")
                 st.session_state.llm_client = OpenAIClient(api_key=settings.openai_api_key, model=settings.openai_model)
             elif settings.llm_provider == "anthropic" and settings.anthropic_api_key:
+                print("[INFO] Using Anthropic client")
                 st.session_state.llm_client = AnthropicClient(api_key=settings.anthropic_api_key, model=settings.anthropic_model)
             elif settings.llm_provider == "huggingface":
+                print(f"[INFO] Using HuggingFace client with model: {settings.huggingface_model}")
                 st.session_state.llm_client = HuggingFaceClient(
                     model_name=settings.huggingface_model,
                     use_quantization=settings.use_quantization
                 )
             else:
                 # Default to HuggingFace MedGemma if no specific provider configured
+                print("[INFO] Defaulting to HuggingFace MedGemma client")
                 st.session_state.llm_client = HuggingFaceClient(
                     model_name="google/medgemma-4b-it",
                     use_quantization=True
                 )
+            print(f"[INFO] LLM client initialized: {type(st.session_state.llm_client).__name__}")
         except Exception as e:
-            print(f"Warning: Could not initialize LLM client: {e}")
+            print(f"[ERROR] Could not initialize LLM client: {e}")
             st.session_state.llm_client = None
     return st.session_state.llm_client
 
@@ -120,6 +126,9 @@ def main():
     # Sidebar navigation
     st.sidebar.title("🏥 irAE Assistant")
     st.sidebar.markdown("---")
+    
+    # Initialize LLM client on app load
+    get_llm_client()
     
     page = st.sidebar.radio(
         "Navigation",
