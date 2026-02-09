@@ -201,6 +201,8 @@ class HuggingFaceClient(BaseLLMClient):
     ) -> str:
         """Generate a completion using MedGemma model."""
         import asyncio
+        import warnings
+        from transformers import GenerationConfig
 
         pipe = self._get_pipeline()
         
@@ -211,15 +213,23 @@ class HuggingFaceClient(BaseLLMClient):
         ]
         prompt = pipe.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 
+        # Use GenerationConfig to avoid deprecation warnings
+        generation_config = GenerationConfig(
+            max_new_tokens=max_tokens,
+            do_sample=True,
+            temperature=temperature if temperature > 0 else 0.01,
+            top_k=50,
+            top_p=0.95,
+        )
+
         def _run_inference():
-            outputs = pipe(
-                prompt,
-                max_new_tokens=max_tokens,
-                do_sample=True,
-                temperature=temperature if temperature > 0 else 0.01,
-                top_k=50,
-                top_p=0.95,
-            )
+            # Suppress bitsandbytes casting warnings
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="MatMul8bitLt")
+                outputs = pipe(
+                    prompt,
+                    generation_config=generation_config,
+                )
             return outputs[0]["generated_text"][len(prompt):]
 
         loop = asyncio.get_running_loop()
