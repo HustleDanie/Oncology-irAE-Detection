@@ -131,7 +131,7 @@ class HuggingFaceClient(BaseLLMClient):
         if self._pipeline is None:
             try:
                 import torch
-                from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
+                from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 
                 print(f"[MEDGEMMA] Starting model load: {self.model_name}")
                 print(f"[MEDGEMMA] HF Token present: {self._hf_token is not None}")
@@ -155,10 +155,14 @@ class HuggingFaceClient(BaseLLMClient):
                     **token_kwargs
                 }
                 
-                if self.use_quantization:
+                if self.use_quantization and torch.cuda.is_available():
                     try:
                         import bitsandbytes
-                        load_kwargs["load_in_8bit"] = True
+                        # Use BitsAndBytesConfig for newer model architectures
+                        quantization_config = BitsAndBytesConfig(
+                            load_in_8bit=True,
+                        )
+                        load_kwargs["quantization_config"] = quantization_config
                         print("[MEDGEMMA] Using 8-bit quantization for memory efficiency.")
                     except ImportError:
                         print("[MEDGEMMA] bitsandbytes not available, loading without quantization.")
