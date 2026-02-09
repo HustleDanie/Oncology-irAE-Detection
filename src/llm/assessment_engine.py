@@ -278,13 +278,32 @@ class IRAEAssessmentEngine:
             against_factors=causality_data.get("against_factors", []),
         )
         
-        # Parse severity
-        overall_severity = self._parse_severity(
+        # Parse severity - use rule-based if LLM doesn't provide clear severity
+        llm_severity = self._parse_severity(
             llm_assessment.get("overall_severity", "Unknown")
         )
         
-        # Parse urgency
-        urgency = self._parse_urgency(llm_assessment.get("urgency", "routine"))
+        # Also calculate rule-based severity from findings
+        rule_based_severity = Severity.UNKNOWN
+        for finding in affected_systems:
+            if finding.severity and finding.detected:
+                if rule_based_severity == Severity.UNKNOWN:
+                    rule_based_severity = finding.severity
+                elif self._severity_rank(finding.severity) > self._severity_rank(rule_based_severity):
+                    rule_based_severity = finding.severity
+        
+        # Use the higher of LLM or rule-based severity (safety-first approach)
+        if self._severity_rank(rule_based_severity) > self._severity_rank(llm_severity):
+            overall_severity = rule_based_severity
+        else:
+            overall_severity = llm_severity if llm_severity != Severity.UNKNOWN else rule_based_severity
+        
+        # Parse urgency from LLM
+        llm_urgency = self._parse_urgency(llm_assessment.get("urgency", "routine"))
+        
+        # CRITICAL: Validate urgency against severity (safety check)
+        # Urgency must be appropriate for the severity level
+        urgency = self._validate_urgency_for_severity(llm_urgency, overall_severity, affected_systems)
         
         # Parse recommended actions
         actions = []
@@ -421,6 +440,60 @@ class IRAEAssessmentEngine:
             Severity.UNKNOWN: 0,
         }
         return ranks.get(severity, 0)
+    
+    def _urgency_rank(self, urgency: Urgency) -> int:
+        """Get numeric rank for urgency."""
+        ranks = {
+            Urgency.ROUTINE: 1,
+            Urgency.SOON: 2,
+            Urgency.URGENT: 3,
+            Urgency.EMERGENCY: 4,
+        }
+        return ranks.get(urgency, 1)
+    
+    def _validate_urgency_for_severity(
+        self,
+        llm_urgency: Urgency,
+        severity: Severity,
+        findings: list[OrganSystemFinding]
+    ) -> Urgency:
+        """
+        Validate and correct urgency based on severity.
+        
+        This is a SAFETY CHECK to ensure urgency is never inappropriately low
+        for the detected severity. Clinical guidelines dictate minimum urgency
+        levels based on CTCAE grade.
+        
+        Rules:
+        - Grade 4 → minimum EMERGENCY
+        - Grade 3 → minimum URGENT  
+        - Grade 2 → minimum SOON (needs oncology review)
+        - Grade 1 → can be ROUTINE
+        - Cardiac/Neuro involvement → upgrade to URGENT
+        """
+        # Calculate minimum required urgency based on severity
+        if severity == Severity.GRADE_4:
+            min_urgency = Urgency.EMERGENCY
+        elif severity == Severity.GRADE_3:
+            min_urgency = Urgency.URGENT
+        elif severity == Severity.GRADE_2:
+            min_urgency = Urgency.SOON  # Grade 2 irAEs need oncology review
+        else:
+            min_urgency = Urgency.ROUTINE
+        
+        # Check for high-risk organ systems (always at least URGENT)
+        high_risk_systems = [OrganSystem.CARDIAC, OrganSystem.NEUROLOGIC]
+        for finding in findings:
+            if finding.detected and finding.system in high_risk_systems:
+                if self._urgency_rank(min_urgency) < self._urgency_rank(Urgency.URGENT):
+                    min_urgency = Urgency.URGENT
+        
+        # Return the higher of LLM urgency or minimum required
+        if self._urgency_rank(llm_urgency) >= self._urgency_rank(min_urgency):
+            return llm_urgency
+        else:
+            # LLM underestimated urgency - use the safety minimum
+            return min_urgency
     
     def _determine_urgency(
         self, 
