@@ -131,10 +131,10 @@ class IRAEAssessmentEngine:
         """Get clinical reasoning from LLM."""
         if not self.llm_client:
             return None
-            
-        prompt_builder = PromptBuilder(patient_data)
-        system_prompt = prompt_builder.build_system_prompt()
-        user_prompt = prompt_builder.build_user_prompt()
+        
+        # PromptBuilder uses static methods
+        system_prompt = PromptBuilder.build_full_system_prompt(include_json_schema=True)
+        user_prompt = PromptBuilder.build_assessment_prompt(patient_data)
         
         return await self.llm_client.complete_json(
             system_prompt=system_prompt,
