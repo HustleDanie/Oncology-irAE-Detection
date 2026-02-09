@@ -97,9 +97,12 @@ class IRAEAssessmentEngine:
         irae_detected = any(f.detected for f in organ_findings)
         
         # Step 5: Use LLM for final reasoning if available
+        print(f"[ASSESSMENT] use_llm={self.use_llm}, llm_client={self.llm_client is not None}")
         if self.use_llm and self.llm_client:
             try:
+                print("[ASSESSMENT] Calling LLM for clinical reasoning...")
                 llm_assessment = await self._get_llm_assessment(patient_data, model_key="reasoning")
+                print(f"[ASSESSMENT] LLM response received: {llm_assessment is not None}")
                 # Merge LLM insights with rule-based findings
                 assessment = self._merge_assessments(
                     immunotherapy_context,
@@ -107,11 +110,15 @@ class IRAEAssessmentEngine:
                     irae_detected,
                     llm_assessment,
                 )
+                print("[ASSESSMENT] Using LLM-enhanced assessment")
             except Exception as e:
                 # Fall back to rule-based only
-                print(f"LLM assessment failed: {e}")
+                print(f"[ASSESSMENT] LLM assessment failed: {e}")
+                import traceback
+                traceback.print_exc()
                 assessment = self._create_rule_based_assessment(immunotherapy_context, organ_findings, irae_detected)
         else:
+            print("[ASSESSMENT] Using rule-based assessment (no LLM)")
             assessment = self._create_rule_based_assessment(immunotherapy_context, organ_findings, irae_detected)
 
         return assessment
