@@ -78,17 +78,29 @@ Map to a CTCAE-style severity level:
 - Grade 4 – Life-threatening
 
 Step 5 — Clinical Triage
-Classify urgency:
-- 🟢 Routine monitoring
-- 🟡 Needs oncology review soon
-- 🟠 Urgent (same day)
-- 🔴 Emergency evaluation
+Classify urgency based on CTCAE grade:
+
+CRITICAL URGENCY RULES (MUST FOLLOW):
+- Grade 1 → 🟢 Routine monitoring (watchful waiting acceptable)
+- Grade 2 → 🟡 Needs oncology review soon (NEVER routine - patient needs review in 1-3 days)
+- Grade 3 → 🟠 Urgent (NEVER routine or soon - same day evaluation required)
+- Grade 4 → 🔴 Emergency (ALWAYS emergency - immediate/ER evaluation)
+
+ORGAN-SPECIFIC URGENCY ESCALATIONS:
+- Cardiac (myocarditis): ALWAYS urgent or emergency regardless of grade - 25-50% mortality
+- Neurologic (encephalitis, MG): ALWAYS urgent - rapid progression risk
+- Pulmonary with hypoxia: Escalate to urgent/emergency
+- Adrenal insufficiency: ALWAYS urgent - life-threatening
+
+NEVER downgrade urgency below these minimums. When in doubt, escalate.
 
 🚫 SAFETY RULES
 - Do not prescribe drugs or dosages
 - Do not give definitive diagnoses
 - Always express uncertainty when evidence is incomplete
-- Emphasize clinician confirmation"""
+- Emphasize clinician confirmation
+- NEVER classify Grade 2+ irAE as "routine monitoring"
+- When multiple systems affected, use highest urgency level"""
 
     JSON_OUTPUT_SCHEMA = """
 Respond with a JSON object following this exact structure:
@@ -130,7 +142,33 @@ Respond with a JSON object following this exact structure:
         }
     ],
     "key_evidence": ["important data points"]
-}"""
+}
+
+⚠️ URGENCY DECISION EXAMPLES (Follow these patterns):
+
+EXAMPLE 1 - Grade 2 GI (CORRECT: soon, NOT routine):
+Patient: 5-6 loose stools daily x 4 days on pembrolizumab
+→ Grade 2 Diarrhea (4-6 stools/day)
+→ Urgency: "soon" (oncology review in 1-3 days)
+✗ WRONG: "routine" - Grade 2 requires action
+
+EXAMPLE 2 - Grade 3 Hepatitis (CORRECT: urgent):
+Patient: AST 485 (12x ULN), ALT 612 (15x ULN), jaundice on ipi/nivo
+→ Grade 3 Hepatitis (>5x ULN with bilirubin elevation)
+→ Urgency: "urgent" (same-day hospitalization)
+✗ WRONG: "soon" - Grade 3 requires same-day action
+
+EXAMPLE 3 - Cardiac (CORRECT: emergency):
+Patient: Troponin 2.8, EF drop 60%→35%, chest pain on combination ICI
+→ Grade 4 Myocarditis (life-threatening)
+→ Urgency: "emergency" (immediate ICU)
+✗ WRONG: any other urgency - cardiac is always urgent/emergency
+
+EXAMPLE 4 - Grade 2 Hypothyroidism (CORRECT: soon, CONTINUE ICI):
+Patient: TSH 28, low T4, fatigue on nivolumab
+→ Grade 2 Hypothyroidism
+→ Urgency: "soon" BUT note ICI can usually CONTINUE with thyroid replacement
+✗ WRONG: "routine" - still needs oncology coordination"""
 
 
 class PromptBuilder:

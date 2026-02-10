@@ -266,11 +266,37 @@ class IRAEAssessmentEngine:
         irae_detected: bool,
         llm_assessment: dict,
     ) -> IRAEAssessment:
-        """Merge rule-based and LLM assessments."""
-        # Parse LLM causality
+        """
+        Merge rule-based and LLM assessments with SAFETY-FIRST approach.
+        
+        Key principle: Always use the MORE CONSERVATIVE (higher severity/urgency)
+        assessment when rule-based and LLM disagree.
+        """
+        # Parse LLM causality - prefer LLM reasoning but validate
         causality_data = llm_assessment.get("causality", {})
+        llm_likelihood = self._parse_likelihood(causality_data.get("likelihood", "Uncertain"))
+        
+        # Rule-based likelihood adjustment
+        rule_based_likelihood = Likelihood.UNCERTAIN
+        if immunotherapy_context.on_immunotherapy and irae_detected:
+            if immunotherapy_context.combination_therapy:
+                rule_based_likelihood = Likelihood.HIGHLY_LIKELY
+            else:
+                rule_based_likelihood = Likelihood.POSSIBLE
+        elif not immunotherapy_context.on_immunotherapy:
+            rule_based_likelihood = Likelihood.UNLIKELY
+        
+        # Use higher likelihood (safety-first)
+        final_likelihood = llm_likelihood
+        likelihood_ranks = {
+            Likelihood.UNLIKELY: 1, Likelihood.UNCERTAIN: 2, 
+            Likelihood.POSSIBLE: 3, Likelihood.HIGHLY_LIKELY: 4
+        }
+        if likelihood_ranks.get(rule_based_likelihood, 2) > likelihood_ranks.get(llm_likelihood, 2):
+            final_likelihood = rule_based_likelihood
+        
         causality = CausalityAssessment(
-            likelihood=self._parse_likelihood(causality_data.get("likelihood", "Uncertain")),
+            likelihood=final_likelihood,
             reasoning=causality_data.get("reasoning", "Based on available clinical data"),
             temporal_relationship=causality_data.get("temporal_relationship"),
             alternative_causes=causality_data.get("alternative_causes", []),
@@ -278,12 +304,7 @@ class IRAEAssessmentEngine:
             against_factors=causality_data.get("against_factors", []),
         )
         
-        # Parse severity - use rule-based if LLM doesn't provide clear severity
-        llm_severity = self._parse_severity(
-            llm_assessment.get("overall_severity", "Unknown")
-        )
-        
-        # Also calculate rule-based severity from findings
+        # SEVERITY VALIDATION: Calculate rule-based severity from analyzers
         rule_based_severity = Severity.UNKNOWN
         for finding in affected_systems:
             if finding.severity and finding.detected:
@@ -292,20 +313,43 @@ class IRAEAssessmentEngine:
                 elif self._severity_rank(finding.severity) > self._severity_rank(rule_based_severity):
                     rule_based_severity = finding.severity
         
-        # Use the higher of LLM or rule-based severity (safety-first approach)
+        # Parse LLM severity
+        llm_severity = self._parse_severity(
+            llm_assessment.get("overall_severity", "Unknown")
+        )
+        
+        # SAFETY-FIRST: Use the HIGHER of LLM or rule-based severity
         if self._severity_rank(rule_based_severity) > self._severity_rank(llm_severity):
             overall_severity = rule_based_severity
+            severity_source = "rule-based"
         else:
             overall_severity = llm_severity if llm_severity != Severity.UNKNOWN else rule_based_severity
+            severity_source = "llm"
         
-        # Parse urgency from LLM
+        # If we still have UNKNOWN severity but irAE detected, default to Grade 2 (moderate)
+        if overall_severity == Severity.UNKNOWN and irae_detected:
+            overall_severity = Severity.GRADE_2
+            severity_source = "default-safety"
+        
+        # URGENCY VALIDATION: Parse LLM urgency then validate
         llm_urgency = self._parse_urgency(llm_assessment.get("urgency", "routine"))
         
         # CRITICAL: Validate urgency against severity (safety check)
-        # Urgency must be appropriate for the severity level
         urgency = self._validate_urgency_for_severity(llm_urgency, overall_severity, affected_systems)
         
-        # Parse recommended actions
+        # Build severity reasoning with validation note
+        severity_reasoning = llm_assessment.get("severity_reasoning", "")
+        if severity_source == "rule-based":
+            severity_reasoning = f"[Safety override: Rule-based analysis detected higher severity] {severity_reasoning}"
+        elif severity_source == "default-safety":
+            severity_reasoning = f"[Safety default: irAE detected with unclear severity, defaulting to Grade 2] {severity_reasoning}"
+        
+        # Build urgency reasoning with validation note
+        urgency_reasoning = llm_assessment.get("urgency_reasoning", "")
+        if self._urgency_rank(urgency) > self._urgency_rank(llm_urgency):
+            urgency_reasoning = f"[Safety override: Urgency escalated to match {overall_severity.value}] {urgency_reasoning}"
+        
+        # Parse recommended actions from LLM
         actions = []
         for action_data in llm_assessment.get("recommended_actions", []):
             actions.append(RecommendedAction(
@@ -314,22 +358,71 @@ class IRAEAssessmentEngine:
                 rationale=action_data.get("rationale"),
             ))
         
-        # Use LLM's irAE detection if it found something we missed
-        irae_detected = irae_detected or llm_assessment.get("irae_detected", False)
+        # Add safety actions if LLM missed critical recommendations
+        actions = self._add_safety_actions(actions, overall_severity, affected_systems)
+        
+        # IRAE DETECTION: Use rule-based if it detected something LLM missed
+        final_irae_detected = irae_detected or llm_assessment.get("irae_detected", False)
         
         return IRAEAssessment(
             assessment_date=datetime.now(),
             immunotherapy_context=immunotherapy_context,
-            irae_detected=irae_detected,
+            irae_detected=final_irae_detected,
             affected_systems=affected_systems,
             causality=causality,
             overall_severity=overall_severity,
-            severity_reasoning=llm_assessment.get("severity_reasoning", ""),
+            severity_reasoning=severity_reasoning,
             urgency=urgency,
-            urgency_reasoning=llm_assessment.get("urgency_reasoning", ""),
+            urgency_reasoning=urgency_reasoning,
             recommended_actions=actions,
             key_evidence=llm_assessment.get("key_evidence", []),
         )
+    
+    def _add_safety_actions(
+        self,
+        actions: list[RecommendedAction],
+        severity: Severity,
+        findings: list[OrganSystemFinding],
+    ) -> list[RecommendedAction]:
+        """Add critical safety actions if missing from LLM recommendations."""
+        action_texts = [a.action.lower() for a in actions]
+        
+        # For Grade 3-4, ensure hold immunotherapy is recommended
+        if severity in [Severity.GRADE_3, Severity.GRADE_4]:
+            if not any("hold" in t or "discontinue" in t or "stop" in t for t in action_texts):
+                actions.insert(0, RecommendedAction(
+                    action="Consider holding/discontinuing immunotherapy pending evaluation",
+                    priority=1,
+                    rationale=f"{severity.value} toxicity typically requires treatment interruption",
+                ))
+        
+        # For cardiac findings, ensure troponin/ECG recommended
+        cardiac_involved = any(
+            f.detected and f.system == OrganSystem.CARDIAC 
+            for f in findings
+        )
+        if cardiac_involved:
+            if not any("troponin" in t or "ecg" in t or "ekg" in t for t in action_texts):
+                actions.insert(0, RecommendedAction(
+                    action="URGENT: Check troponin, BNP, and obtain ECG - rule out myocarditis",
+                    priority=1,
+                    rationale="Cardiac irAEs have 25-50% mortality - requires immediate workup",
+                ))
+        
+        # For neuro findings, ensure neurology consult
+        neuro_involved = any(
+            f.detected and f.system == OrganSystem.NEUROLOGIC 
+            for f in findings
+        )
+        if neuro_involved:
+            if not any("neurology" in t or "neuro" in t for t in action_texts):
+                actions.append(RecommendedAction(
+                    action="Obtain urgent neurology consultation",
+                    priority=1,
+                    rationale="Neurologic irAEs can progress rapidly",
+                ))
+        
+        return actions
     
     def _create_rule_based_assessment(
         self,
