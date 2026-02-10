@@ -98,14 +98,13 @@ class OpenAIClient(BaseLLMClient):
 
 
 class HuggingFaceClient(BaseLLMClient):
-    """Hugging Face client for Google MedGemma models."""
+    """Hugging Face client for Google MedGemma models from HAI-DEF."""
 
     def __init__(self, model_name: str = "google/medgemma-4b-it", use_quantization: bool = True):
         self.model_name = model_name
         self.use_quantization = use_quantization
         self._pipeline = None
         self._tokenizer = None
-        self._model = None
         self._hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
         self._model_loaded = False
         self._loading_error = None
@@ -131,27 +130,13 @@ class HuggingFaceClient(BaseLLMClient):
         """Lazy initialization of Hugging Face pipeline for MedGemma."""
         if self._pipeline is None:
             try:
-                import gc
                 import torch
-                from transformers import (
-                    pipeline, 
-                    AutoTokenizer, 
-                    AutoModelForCausalLM,
-                    BitsAndBytesConfig,
-                )
+                from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 
                 print(f"[MEDGEMMA] Starting model load: {self.model_name}")
                 print(f"[MEDGEMMA] HF Token present: {self._hf_token is not None}")
                 print(f"[MEDGEMMA] Use quantization: {self.use_quantization}")
                 print(f"[MEDGEMMA] CUDA available: {torch.cuda.is_available()}")
-                
-                if torch.cuda.is_available():
-                    print(f"[MEDGEMMA] GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
-                
-                # Clear any cached memory before loading
-                gc.collect()
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
                 
                 # Use token for gated model access
                 token_kwargs = {"token": self._hf_token} if self._hf_token else {}
@@ -161,68 +146,40 @@ class HuggingFaceClient(BaseLLMClient):
                     self.model_name,
                     **token_kwargs
                 )
-                # Ensure pad token is set
-                if self._tokenizer.pad_token is None:
-                    self._tokenizer.pad_token = self._tokenizer.eos_token
                 print("[MEDGEMMA] Tokenizer loaded successfully!")
                 
-                print("[MEDGEMMA] Loading model weights (this may take several minutes)...")
+                # Load with quantization if enabled and available
+                load_kwargs = {
+                    "device_map": "auto",
+                    "torch_dtype": torch.bfloat16,
+                    **token_kwargs
+                }
                 
-                # Use 8-bit quantization for optimal memory/quality balance
                 if self.use_quantization and torch.cuda.is_available():
                     try:
                         import bitsandbytes
-                        
-                        # 8-bit quantization config - good balance of memory and quality
+                        # Use BitsAndBytesConfig for newer model architectures
                         quantization_config = BitsAndBytesConfig(
                             load_in_8bit=True,
-                            llm_int8_threshold=6.0,  # Default threshold for outliers
                         )
-                        print("[MEDGEMMA] Using 8-bit quantization (~4GB VRAM)")
-                        
-                        self._model = AutoModelForCausalLM.from_pretrained(
-                            self.model_name,
-                            device_map="auto",
-                            quantization_config=quantization_config,
-                            trust_remote_code=True,
-                            low_cpu_mem_usage=True,  # Reduce CPU memory during loading
-                            **token_kwargs
-                        )
+                        load_kwargs["quantization_config"] = quantization_config
+                        print("[MEDGEMMA] Using 8-bit quantization for memory efficiency.")
                     except ImportError:
-                        print("[MEDGEMMA] bitsandbytes not available, loading in float16...")
-                        self._model = AutoModelForCausalLM.from_pretrained(
-                            self.model_name,
-                            device_map="auto",
-                            torch_dtype=torch.float16,
-                            trust_remote_code=True,
-                            low_cpu_mem_usage=True,
-                            **token_kwargs
-                        )
-                else:
-                    # CPU or no quantization
-                    dtype = torch.float16 if torch.cuda.is_available() else torch.float32
-                    self._model = AutoModelForCausalLM.from_pretrained(
-                        self.model_name,
-                        device_map="auto" if torch.cuda.is_available() else None,
-                        torch_dtype=dtype,
-                        trust_remote_code=True,
-                        low_cpu_mem_usage=True,
-                        **token_kwargs
-                    )
+                        print("[MEDGEMMA] bitsandbytes not available, loading without quantization.")
                 
-                print(f"[MEDGEMMA] Model class: {type(self._model).__name__}")
-                
-                if torch.cuda.is_available():
-                    mem_used = torch.cuda.memory_allocated() / 1e9
-                    print(f"[MEDGEMMA] GPU Memory used: {mem_used:.1f} GB")
+                print("[MEDGEMMA] Loading model weights (this may take several minutes)...")
+                model = AutoModelForCausalLM.from_pretrained(
+                    self.model_name,
+                    **load_kwargs
+                )
 
                 self._pipeline = pipeline(
                     "text-generation",
-                    model=self._model,
+                    model=model,
                     tokenizer=self._tokenizer,
                 )
                 self._model_loaded = True
-                print(f"[MEDGEMMA] Model loaded successfully!")
+                print(f"MedGemma model loaded successfully.")
                 
             except ImportError as e:
                 self._loading_error = str(e)
@@ -231,8 +188,6 @@ class HuggingFaceClient(BaseLLMClient):
                 )
             except Exception as e:
                 self._loading_error = str(e)
-                import traceback
-                traceback.print_exc()
                 raise RuntimeError(f"Failed to load MedGemma model: {e}")
         return self._pipeline
 
@@ -241,73 +196,41 @@ class HuggingFaceClient(BaseLLMClient):
         system_prompt: str,
         user_prompt: str,
         temperature: float = 0.3,
-        max_tokens: int = 1500,  # Reduced to avoid memory issues
+        max_tokens: int = 2000,
         model_key: str = None  # Kept for backwards compatibility, ignored
     ) -> str:
         """Generate a completion using MedGemma model."""
         import asyncio
         import warnings
-        import torch
+        from transformers import GenerationConfig
 
         pipe = self._get_pipeline()
         
-        # MedGemma uses a chat format - but some versions don't support system role
-        # Try user-only format which is more compatible
-        try:
-            messages = [
-                {"role": "user", "content": f"{system_prompt}\n\n{user_prompt}"},
-            ]
-            prompt = pipe.tokenizer.apply_chat_template(
-                messages, 
-                tokenize=False, 
-                add_generation_prompt=True
-            )
-        except Exception as e:
-            print(f"[MEDGEMMA] Chat template failed: {e}, using raw prompt")
-            prompt = f"{system_prompt}\n\n{user_prompt}\n\nResponse:"
-        
-        # Get proper token IDs from the model config
-        eos_token_id = pipe.tokenizer.eos_token_id
-        pad_token_id = pipe.tokenizer.pad_token_id if pipe.tokenizer.pad_token_id is not None else eos_token_id
-        
-        # Handle list of eos_token_ids (Gemma uses [1, 106])
-        if isinstance(eos_token_id, list):
-            eos_token_id = eos_token_id[0]
+        # MedGemma uses a chat format with system and user roles
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+        prompt = pipe.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+
+        # Use GenerationConfig to avoid deprecation warnings
+        generation_config = GenerationConfig(
+            max_new_tokens=max_tokens,
+            do_sample=True,
+            temperature=temperature if temperature > 0 else 0.01,
+            top_k=50,
+            top_p=0.95,
+        )
 
         def _run_inference():
-            # Suppress warnings during inference
+            # Suppress bitsandbytes casting warnings
             with warnings.catch_warnings():
-                warnings.filterwarnings("ignore")
-                try:
-                    with torch.inference_mode():
-                        outputs = pipe(
-                            prompt,
-                            max_new_tokens=max_tokens,
-                            do_sample=True,
-                            temperature=max(temperature, 0.1),
-                            top_k=50,
-                            top_p=0.9,
-                            pad_token_id=pad_token_id,
-                            eos_token_id=eos_token_id,
-                            return_full_text=False,  # Only return generated text
-                        )
-                    return outputs[0]["generated_text"]
-                except RuntimeError as e:
-                    if "CUDA" in str(e):
-                        print(f"[MEDGEMMA] CUDA error, retrying with smaller output...")
-                        # Retry with smaller max_tokens
-                        with torch.inference_mode():
-                            torch.cuda.empty_cache()
-                            outputs = pipe(
-                                prompt,
-                                max_new_tokens=500,
-                                do_sample=False,  # Greedy decoding is more stable
-                                pad_token_id=pad_token_id,
-                                eos_token_id=eos_token_id,
-                                return_full_text=False,
-                            )
-                        return outputs[0]["generated_text"]
-                    raise
+                warnings.filterwarnings("ignore", message="MatMul8bitLt")
+                outputs = pipe(
+                    prompt,
+                    generation_config=generation_config,
+                )
+            return outputs[0]["generated_text"][len(prompt):]
 
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(None, _run_inference)
@@ -318,7 +241,7 @@ class HuggingFaceClient(BaseLLMClient):
         system_prompt: str,
         user_prompt: str,
         temperature: float = 0.1,
-        max_tokens: int = 2000,  # Reduced for stability
+        max_tokens: int = 3000,
         model_key: str = None  # Kept for backwards compatibility, ignored
     ) -> dict:
         """Generate a JSON completion using MedGemma model."""
