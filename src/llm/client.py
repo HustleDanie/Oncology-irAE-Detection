@@ -241,44 +241,73 @@ class HuggingFaceClient(BaseLLMClient):
         system_prompt: str,
         user_prompt: str,
         temperature: float = 0.3,
-        max_tokens: int = 2000,
+        max_tokens: int = 1500,  # Reduced to avoid memory issues
         model_key: str = None  # Kept for backwards compatibility, ignored
     ) -> str:
         """Generate a completion using MedGemma model."""
         import asyncio
         import warnings
         import torch
-        from transformers import GenerationConfig
 
         pipe = self._get_pipeline()
         
-        # MedGemma uses a chat format with system and user roles
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ]
-        prompt = pipe.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-
-        # Use GenerationConfig to avoid deprecation warnings
-        generation_config = GenerationConfig(
-            max_new_tokens=max_tokens,
-            do_sample=True,
-            temperature=max(temperature, 0.01),  # Ensure temperature > 0
-            top_k=50,
-            top_p=0.95,
-            pad_token_id=pipe.tokenizer.pad_token_id or pipe.tokenizer.eos_token_id,
-        )
+        # MedGemma uses a chat format - but some versions don't support system role
+        # Try user-only format which is more compatible
+        try:
+            messages = [
+                {"role": "user", "content": f"{system_prompt}\n\n{user_prompt}"},
+            ]
+            prompt = pipe.tokenizer.apply_chat_template(
+                messages, 
+                tokenize=False, 
+                add_generation_prompt=True
+            )
+        except Exception as e:
+            print(f"[MEDGEMMA] Chat template failed: {e}, using raw prompt")
+            prompt = f"{system_prompt}\n\n{user_prompt}\n\nResponse:"
+        
+        # Get proper token IDs from the model config
+        eos_token_id = pipe.tokenizer.eos_token_id
+        pad_token_id = pipe.tokenizer.pad_token_id if pipe.tokenizer.pad_token_id is not None else eos_token_id
+        
+        # Handle list of eos_token_ids (Gemma uses [1, 106])
+        if isinstance(eos_token_id, list):
+            eos_token_id = eos_token_id[0]
 
         def _run_inference():
             # Suppress warnings during inference
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore")
-                with torch.inference_mode():
-                    outputs = pipe(
-                        prompt,
-                        generation_config=generation_config,
-                    )
-            return outputs[0]["generated_text"][len(prompt):]
+                try:
+                    with torch.inference_mode():
+                        outputs = pipe(
+                            prompt,
+                            max_new_tokens=max_tokens,
+                            do_sample=True,
+                            temperature=max(temperature, 0.1),
+                            top_k=50,
+                            top_p=0.9,
+                            pad_token_id=pad_token_id,
+                            eos_token_id=eos_token_id,
+                            return_full_text=False,  # Only return generated text
+                        )
+                    return outputs[0]["generated_text"]
+                except RuntimeError as e:
+                    if "CUDA" in str(e):
+                        print(f"[MEDGEMMA] CUDA error, retrying with smaller output...")
+                        # Retry with smaller max_tokens
+                        with torch.inference_mode():
+                            torch.cuda.empty_cache()
+                            outputs = pipe(
+                                prompt,
+                                max_new_tokens=500,
+                                do_sample=False,  # Greedy decoding is more stable
+                                pad_token_id=pad_token_id,
+                                eos_token_id=eos_token_id,
+                                return_full_text=False,
+                            )
+                        return outputs[0]["generated_text"]
+                    raise
 
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(None, _run_inference)
@@ -289,7 +318,7 @@ class HuggingFaceClient(BaseLLMClient):
         system_prompt: str,
         user_prompt: str,
         temperature: float = 0.1,
-        max_tokens: int = 3000,
+        max_tokens: int = 2000,  # Reduced for stability
         model_key: str = None  # Kept for backwards compatibility, ignored
     ) -> dict:
         """Generate a JSON completion using MedGemma model."""
