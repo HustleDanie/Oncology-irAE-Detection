@@ -98,13 +98,14 @@ class OpenAIClient(BaseLLMClient):
 
 
 class HuggingFaceClient(BaseLLMClient):
-    """Hugging Face client for Google MedGemma models from HAI-DEF."""
+    """Hugging Face client for Google MedGemma models."""
 
     def __init__(self, model_name: str = "google/medgemma-4b-it", use_quantization: bool = True):
         self.model_name = model_name
         self.use_quantization = use_quantization
         self._pipeline = None
         self._tokenizer = None
+        self._model = None
         self._hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
         self._model_loaded = False
         self._loading_error = None
@@ -131,7 +132,12 @@ class HuggingFaceClient(BaseLLMClient):
         if self._pipeline is None:
             try:
                 import torch
-                from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+                from transformers import (
+                    pipeline, 
+                    AutoTokenizer, 
+                    AutoModelForCausalLM,
+                    BitsAndBytesConfig,
+                )
 
                 print(f"[MEDGEMMA] Starting model load: {self.model_name}")
                 print(f"[MEDGEMMA] HF Token present: {self._hf_token is not None}")
@@ -146,40 +152,70 @@ class HuggingFaceClient(BaseLLMClient):
                     self.model_name,
                     **token_kwargs
                 )
+                # Ensure pad token is set
+                if self._tokenizer.pad_token is None:
+                    self._tokenizer.pad_token = self._tokenizer.eos_token
                 print("[MEDGEMMA] Tokenizer loaded successfully!")
                 
-                # Load with quantization if enabled and available
-                load_kwargs = {
-                    "device_map": "auto",
-                    "torch_dtype": torch.bfloat16,
-                    **token_kwargs
-                }
+                # Determine device and dtype
+                if torch.cuda.is_available():
+                    device_map = "auto"
+                    # Use float16 for stability (bfloat16 can cause dtype mismatch errors)
+                    model_dtype = torch.float16
+                    print(f"[MEDGEMMA] Using CUDA with float16")
+                else:
+                    device_map = "cpu"
+                    model_dtype = torch.float32
+                    print(f"[MEDGEMMA] Using CPU with float32")
                 
+                print("[MEDGEMMA] Loading model weights (this may take several minutes)...")
+                
+                # Add quantization if enabled and CUDA available
                 if self.use_quantization and torch.cuda.is_available():
                     try:
                         import bitsandbytes
-                        # Use BitsAndBytesConfig for newer model architectures
                         quantization_config = BitsAndBytesConfig(
-                            load_in_8bit=True,
+                            load_in_4bit=True,  # Use 4-bit for better memory efficiency
+                            bnb_4bit_compute_dtype=torch.float16,
+                            bnb_4bit_use_double_quant=True,
+                            bnb_4bit_quant_type="nf4",
                         )
-                        load_kwargs["quantization_config"] = quantization_config
-                        print("[MEDGEMMA] Using 8-bit quantization for memory efficiency.")
+                        print("[MEDGEMMA] Using 4-bit quantization for memory efficiency.")
+                        
+                        self._model = AutoModelForCausalLM.from_pretrained(
+                            self.model_name,
+                            device_map=device_map,
+                            quantization_config=quantization_config,
+                            trust_remote_code=True,
+                            **token_kwargs
+                        )
                     except ImportError:
                         print("[MEDGEMMA] bitsandbytes not available, loading without quantization.")
+                        self._model = AutoModelForCausalLM.from_pretrained(
+                            self.model_name,
+                            device_map=device_map,
+                            torch_dtype=model_dtype,
+                            trust_remote_code=True,
+                            **token_kwargs
+                        )
+                else:
+                    self._model = AutoModelForCausalLM.from_pretrained(
+                        self.model_name,
+                        device_map=device_map,
+                        torch_dtype=model_dtype,
+                        trust_remote_code=True,
+                        **token_kwargs
+                    )
                 
-                print("[MEDGEMMA] Loading model weights (this may take several minutes)...")
-                model = AutoModelForCausalLM.from_pretrained(
-                    self.model_name,
-                    **load_kwargs
-                )
+                print(f"[MEDGEMMA] Model class: {type(self._model).__name__}")
 
                 self._pipeline = pipeline(
                     "text-generation",
-                    model=model,
+                    model=self._model,
                     tokenizer=self._tokenizer,
                 )
                 self._model_loaded = True
-                print(f"MedGemma model loaded successfully.")
+                print(f"[MEDGEMMA] Model loaded successfully!")
                 
             except ImportError as e:
                 self._loading_error = str(e)
@@ -188,6 +224,8 @@ class HuggingFaceClient(BaseLLMClient):
                 )
             except Exception as e:
                 self._loading_error = str(e)
+                import traceback
+                traceback.print_exc()
                 raise RuntimeError(f"Failed to load MedGemma model: {e}")
         return self._pipeline
 
@@ -202,6 +240,7 @@ class HuggingFaceClient(BaseLLMClient):
         """Generate a completion using MedGemma model."""
         import asyncio
         import warnings
+        import torch
         from transformers import GenerationConfig
 
         pipe = self._get_pipeline()
@@ -217,19 +256,21 @@ class HuggingFaceClient(BaseLLMClient):
         generation_config = GenerationConfig(
             max_new_tokens=max_tokens,
             do_sample=True,
-            temperature=temperature if temperature > 0 else 0.01,
+            temperature=max(temperature, 0.01),  # Ensure temperature > 0
             top_k=50,
             top_p=0.95,
+            pad_token_id=pipe.tokenizer.pad_token_id or pipe.tokenizer.eos_token_id,
         )
 
         def _run_inference():
-            # Suppress bitsandbytes casting warnings
+            # Suppress warnings during inference
             with warnings.catch_warnings():
-                warnings.filterwarnings("ignore", message="MatMul8bitLt")
-                outputs = pipe(
-                    prompt,
-                    generation_config=generation_config,
-                )
+                warnings.filterwarnings("ignore")
+                with torch.inference_mode():
+                    outputs = pipe(
+                        prompt,
+                        generation_config=generation_config,
+                    )
             return outputs[0]["generated_text"][len(prompt):]
 
         loop = asyncio.get_running_loop()
