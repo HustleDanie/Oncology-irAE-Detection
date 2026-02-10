@@ -131,6 +131,7 @@ class HuggingFaceClient(BaseLLMClient):
         """Lazy initialization of Hugging Face pipeline for MedGemma."""
         if self._pipeline is None:
             try:
+                import gc
                 import torch
                 from transformers import (
                     pipeline, 
@@ -143,6 +144,14 @@ class HuggingFaceClient(BaseLLMClient):
                 print(f"[MEDGEMMA] HF Token present: {self._hf_token is not None}")
                 print(f"[MEDGEMMA] Use quantization: {self.use_quantization}")
                 print(f"[MEDGEMMA] CUDA available: {torch.cuda.is_available()}")
+                
+                if torch.cuda.is_available():
+                    print(f"[MEDGEMMA] GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
+                
+                # Clear any cached memory before loading
+                gc.collect()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
                 
                 # Use token for gated model access
                 token_kwargs = {"token": self._hf_token} if self._hf_token else {}
@@ -157,57 +166,55 @@ class HuggingFaceClient(BaseLLMClient):
                     self._tokenizer.pad_token = self._tokenizer.eos_token
                 print("[MEDGEMMA] Tokenizer loaded successfully!")
                 
-                # Determine device and dtype
-                if torch.cuda.is_available():
-                    device_map = "auto"
-                    # Use float16 for stability (bfloat16 can cause dtype mismatch errors)
-                    model_dtype = torch.float16
-                    print(f"[MEDGEMMA] Using CUDA with float16")
-                else:
-                    device_map = "cpu"
-                    model_dtype = torch.float32
-                    print(f"[MEDGEMMA] Using CPU with float32")
-                
                 print("[MEDGEMMA] Loading model weights (this may take several minutes)...")
                 
-                # Add quantization if enabled and CUDA available
+                # Use 8-bit quantization for optimal memory/quality balance
                 if self.use_quantization and torch.cuda.is_available():
                     try:
                         import bitsandbytes
+                        
+                        # 8-bit quantization config - good balance of memory and quality
                         quantization_config = BitsAndBytesConfig(
-                            load_in_4bit=True,  # Use 4-bit for better memory efficiency
-                            bnb_4bit_compute_dtype=torch.float16,
-                            bnb_4bit_use_double_quant=True,
-                            bnb_4bit_quant_type="nf4",
+                            load_in_8bit=True,
+                            llm_int8_threshold=6.0,  # Default threshold for outliers
                         )
-                        print("[MEDGEMMA] Using 4-bit quantization for memory efficiency.")
+                        print("[MEDGEMMA] Using 8-bit quantization (~4GB VRAM)")
                         
                         self._model = AutoModelForCausalLM.from_pretrained(
                             self.model_name,
-                            device_map=device_map,
+                            device_map="auto",
                             quantization_config=quantization_config,
                             trust_remote_code=True,
+                            low_cpu_mem_usage=True,  # Reduce CPU memory during loading
                             **token_kwargs
                         )
                     except ImportError:
-                        print("[MEDGEMMA] bitsandbytes not available, loading without quantization.")
+                        print("[MEDGEMMA] bitsandbytes not available, loading in float16...")
                         self._model = AutoModelForCausalLM.from_pretrained(
                             self.model_name,
-                            device_map=device_map,
-                            torch_dtype=model_dtype,
+                            device_map="auto",
+                            torch_dtype=torch.float16,
                             trust_remote_code=True,
+                            low_cpu_mem_usage=True,
                             **token_kwargs
                         )
                 else:
+                    # CPU or no quantization
+                    dtype = torch.float16 if torch.cuda.is_available() else torch.float32
                     self._model = AutoModelForCausalLM.from_pretrained(
                         self.model_name,
-                        device_map=device_map,
-                        torch_dtype=model_dtype,
+                        device_map="auto" if torch.cuda.is_available() else None,
+                        torch_dtype=dtype,
                         trust_remote_code=True,
+                        low_cpu_mem_usage=True,
                         **token_kwargs
                     )
                 
                 print(f"[MEDGEMMA] Model class: {type(self._model).__name__}")
+                
+                if torch.cuda.is_available():
+                    mem_used = torch.cuda.memory_allocated() / 1e9
+                    print(f"[MEDGEMMA] GPU Memory used: {mem_used:.1f} GB")
 
                 self._pipeline = pipeline(
                     "text-generation",
