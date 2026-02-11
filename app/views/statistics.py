@@ -224,6 +224,245 @@ def render():
     st.markdown("---")
     
     # =========================================================================
+    # DEMO CLINICAL CASES - COPY & PASTE READY
+    # =========================================================================
+    st.subheader("📋 Demo Clinical Cases (Copy & Paste)")
+    
+    st.info("""
+    **For hackathon demo:** Copy any of these cases into the assessment tool. 
+    Expected outcomes are shown so you know what MedGemma should predict.
+    """)
+    
+    # Case 1: GI Colitis - Grade 2
+    with st.expander("🟡 CASE 1: GI Colitis (Grade 2) - Classic Demo Case", expanded=True):
+        case1_col1, case1_col2 = st.columns([2, 1])
+        
+        with case1_col1:
+            st.markdown("**📝 Clinical Case (copy this):**")
+            case1_text = """58-year-old male with metastatic melanoma on pembrolizumab (cycle 4, last infusion 2 weeks ago).
+
+Chief Complaint: Diarrhea x4 days
+
+HPI: Patient reports 5-6 loose, watery stools daily for the past 4 days. Mild abdominal cramping. No blood in stool. No fever. Appetite slightly decreased.
+
+Medications: Pembrolizumab 200mg IV q3wks, metformin 1000mg BID, lisinopril 10mg daily
+
+Labs: WBC 8.2, CRP 4.8 mg/dL (elevated), ESR 42 mm/hr (elevated), albumin 3.2
+
+Vitals: T 98.6F, BP 128/78, HR 82"""
+            
+            st.code(case1_text, language=None)
+            
+        with case1_col2:
+            st.markdown("**✅ Expected MedGemma Output:**")
+            st.markdown("""
+            <div style="background-color: #1e3a1e; padding: 1rem; border-radius: 8px; font-size: 0.9rem;">
+            <strong>irAE Detected:</strong> YES<br>
+            <strong>System:</strong> Gastrointestinal<br>
+            <strong>Condition:</strong> Colitis<br>
+            <strong>Severity:</strong> Grade 2<br>
+            <strong>Urgency:</strong> SOON (1-3 days)<br><br>
+            <strong>Key Recommendations:</strong><br>
+            • Hold pembrolizumab<br>
+            • Start oral prednisone 1mg/kg<br>
+            • Stool studies to r/o infection<br>
+            • Follow-up in 48-72 hours
+            </div>
+            """, unsafe_allow_html=True)
+    
+    # Case 2: Cardiac - Grade 3 EMERGENCY
+    with st.expander("🔴 CASE 2: Cardiac Myocarditis (Grade 3) - EMERGENCY Demo"):
+        case2_col1, case2_col2 = st.columns([2, 1])
+        
+        with case2_col1:
+            st.markdown("**📝 Clinical Case (copy this):**")
+            case2_text = """67-year-old female with NSCLC on nivolumab + ipilimumab (cycle 2, last infusion 10 days ago).
+
+Chief Complaint: Chest pain and shortness of breath x2 days
+
+HPI: Progressive dyspnea on exertion, now at rest. Substernal chest pressure. New fatigue and palpitations. Unable to climb one flight of stairs without stopping.
+
+Medications: Nivolumab 240mg + Ipilimumab 1mg/kg IV q3wks, aspirin 81mg, atorvastatin 40mg
+
+Labs: Troponin I 0.89 ng/mL (elevated, normal <0.04), BNP 580 pg/mL (elevated), CK-MB 12.4
+
+ECG: New PR prolongation, diffuse ST changes
+
+Vitals: T 99.1F, BP 102/68, HR 108, O2 sat 92% on RA"""
+            
+            st.code(case2_text, language=None)
+            
+        with case2_col2:
+            st.markdown("**✅ Expected MedGemma Output:**")
+            st.markdown("""
+            <div style="background-color: #3a1e1e; padding: 1rem; border-radius: 8px; font-size: 0.9rem;">
+            <strong>irAE Detected:</strong> YES<br>
+            <strong>System:</strong> Cardiac<br>
+            <strong>Condition:</strong> Myocarditis<br>
+            <strong>Severity:</strong> Grade 3<br>
+            <strong>Urgency:</strong> 🚨 EMERGENCY<br><br>
+            <strong>Key Recommendations:</strong><br>
+            • STOP immunotherapy immediately<br>
+            • Admit to cardiac monitoring unit<br>
+            • IV methylprednisolone 1g/day<br>
+            • Urgent cardiology consult<br>
+            • Consider cardiac MRI
+            </div>
+            """, unsafe_allow_html=True)
+            st.error("⚠️ Cardiac irAEs are ALWAYS emergency - this is hardcoded in SafetyValidator!")
+    
+    # Case 3: Hepatitis - Grade 2
+    with st.expander("🟡 CASE 3: Hepatitis (Grade 2) - Elevated LFTs"):
+        case3_col1, case3_col2 = st.columns([2, 1])
+        
+        with case3_col1:
+            st.markdown("**📝 Clinical Case (copy this):**")
+            case3_text = """52-year-old male with renal cell carcinoma on pembrolizumab (cycle 6).
+
+Chief Complaint: Routine labs show elevated liver enzymes
+
+HPI: Patient feels well. No jaundice, no abdominal pain, no nausea. No alcohol use. No new medications or supplements.
+
+Medications: Pembrolizumab 200mg IV q3wks, amlodipine 5mg daily
+
+Labs (today): AST 168 U/L (normal <40), ALT 195 U/L (normal <41), ALP 98, Total bilirubin 1.1
+Labs (3 weeks ago): AST 32, ALT 38, ALP 85, Total bilirubin 0.8
+
+Vitals: T 98.2F, BP 132/82, HR 76"""
+            
+            st.code(case3_text, language=None)
+            
+        with case3_col2:
+            st.markdown("**✅ Expected MedGemma Output:**")
+            st.markdown("""
+            <div style="background-color: #1e3a1e; padding: 1rem; border-radius: 8px; font-size: 0.9rem;">
+            <strong>irAE Detected:</strong> YES<br>
+            <strong>System:</strong> Hepatic<br>
+            <strong>Condition:</strong> Hepatitis<br>
+            <strong>Severity:</strong> Grade 2 (AST/ALT 3-5x ULN)<br>
+            <strong>Urgency:</strong> SOON (1-3 days)<br><br>
+            <strong>Key Recommendations:</strong><br>
+            • Hold pembrolizumab<br>
+            • Recheck LFTs in 3-5 days<br>
+            • Rule out viral hepatitis<br>
+            • Consider hepatology consult<br>
+            • Start steroids if worsening
+            </div>
+            """, unsafe_allow_html=True)
+    
+    # Case 4: Pneumonitis - Grade 3
+    with st.expander("🟠 CASE 4: Pneumonitis (Grade 3) - URGENT"):
+        case4_col1, case4_col2 = st.columns([2, 1])
+        
+        with case4_col1:
+            st.markdown("**📝 Clinical Case (copy this):**")
+            case4_text = """71-year-old male with metastatic bladder cancer on atezolizumab (cycle 5, last infusion 3 weeks ago).
+
+Chief Complaint: Progressive shortness of breath x1 week
+
+HPI: Worsening dyspnea, now requiring oxygen at home. Dry, nonproductive cough x10 days. Unable to perform daily activities. Denies fever, chills. No leg swelling.
+
+Medications: Atezolizumab 1200mg IV q3wks, metoprolol 25mg BID, omeprazole 20mg
+
+Labs: WBC 11.2, CRP 8.4 mg/dL (elevated)
+
+Imaging: CT chest shows new bilateral ground-glass opacities, no PE
+
+Vitals: T 98.8F, BP 138/84, HR 96, RR 24, O2 sat 88% on room air (94% on 3L NC)"""
+            
+            st.code(case4_text, language=None)
+            
+        with case4_col2:
+            st.markdown("**✅ Expected MedGemma Output:**")
+            st.markdown("""
+            <div style="background-color: #3a2a1e; padding: 1rem; border-radius: 8px; font-size: 0.9rem;">
+            <strong>irAE Detected:</strong> YES<br>
+            <strong>System:</strong> Pulmonary<br>
+            <strong>Condition:</strong> Pneumonitis<br>
+            <strong>Severity:</strong> Grade 3 (O2 required)<br>
+            <strong>Urgency:</strong> URGENT (same-day)<br><br>
+            <strong>Key Recommendations:</strong><br>
+            • STOP atezolizumab<br>
+            • Admit for IV steroids<br>
+            • IV methylprednisolone 2mg/kg<br>
+            • Pulmonology consult<br>
+            • Rule out infection (bronch if needed)
+            </div>
+            """, unsafe_allow_html=True)
+    
+    # Case 5: Endocrine (Thyroiditis) - Grade 1
+    with st.expander("🟢 CASE 5: Thyroiditis (Grade 1) - Routine Monitoring"):
+        case5_col1, case5_col2 = st.columns([2, 1])
+        
+        with case5_col1:
+            st.markdown("**📝 Clinical Case (copy this):**")
+            case5_text = """45-year-old female with melanoma on pembrolizumab (cycle 8).
+
+Chief Complaint: Routine lab monitoring
+
+HPI: Patient feels well overall. Mild fatigue but attributes to work stress. No weight changes, no temperature intolerance, no palpitations. Good appetite.
+
+Medications: Pembrolizumab 200mg IV q3wks, vitamin D 2000 IU daily
+
+Labs: TSH 6.8 mIU/L (elevated, normal 0.4-4.0), Free T4 0.9 ng/dL (low-normal), Free T3 2.4
+Prior TSH (2 months ago): 2.1 mIU/L
+
+Vitals: T 98.4F, BP 118/72, HR 68"""
+            
+            st.code(case5_text, language=None)
+            
+        with case5_col2:
+            st.markdown("**✅ Expected MedGemma Output:**")
+            st.markdown("""
+            <div style="background-color: #1e2a3a; padding: 1rem; border-radius: 8px; font-size: 0.9rem;">
+            <strong>irAE Detected:</strong> YES<br>
+            <strong>System:</strong> Endocrine<br>
+            <strong>Condition:</strong> Thyroiditis/Hypothyroidism<br>
+            <strong>Severity:</strong> Grade 1 (asymptomatic)<br>
+            <strong>Urgency:</strong> ROUTINE<br><br>
+            <strong>Key Recommendations:</strong><br>
+            • Continue pembrolizumab<br>
+            • Recheck TSH in 4-6 weeks<br>
+            • Start levothyroxine if symptomatic<br>
+            • Monitor for progression<br>
+            • Endocrine consult if T4 drops
+            </div>
+            """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # Quick reference table
+    st.markdown("### 📊 Quick Reference: Demo Cases Summary")
+    
+    demo_summary = {
+        "Case": ["Case 1", "Case 2", "Case 3", "Case 4", "Case 5"],
+        "irAE Type": ["GI Colitis", "Cardiac Myocarditis", "Hepatitis", "Pneumonitis", "Thyroiditis"],
+        "Grade": ["Grade 2", "Grade 3", "Grade 2", "Grade 3", "Grade 1"],
+        "Urgency": ["🟡 SOON", "🔴 EMERGENCY", "🟡 SOON", "🟠 URGENT", "🟢 ROUTINE"],
+        "Key Finding": ["5-6 stools/day", "Troponin 0.89, ECG changes", "AST/ALT 4-5x ULN", "O2 sat 88%, GGO on CT", "TSH 6.8"],
+        "Demo Purpose": ["Classic case", "Safety validator", "Lab-based detection", "Imaging + symptoms", "Mild case handling"]
+    }
+    
+    import pandas as pd
+    demo_df = pd.DataFrame(demo_summary)
+    
+    st.dataframe(
+        demo_df,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Urgency": st.column_config.TextColumn("Urgency", width="small"),
+        }
+    )
+    
+    st.success("""
+    **💡 Demo Tip:** Start with Case 1 (GI Colitis) - it's the most common and easiest to explain. 
+    Then show Case 2 (Cardiac) to demonstrate the SafetyValidator enforcing emergency urgency.
+    """)
+    
+    st.markdown("---")
+    
+    # =========================================================================
     # INCIDENCE BY ORGAN SYSTEM
     # =========================================================================
     st.subheader("🫀 irAE Incidence by Organ System")
