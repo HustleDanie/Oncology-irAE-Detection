@@ -83,15 +83,6 @@ def render_freetext_input():
         
         st.markdown("---")
         
-        # Analysis options
-        col1, col2 = st.columns(2)
-        with col1:
-            use_llm = st.checkbox(
-                "🤖 Use AI-enhanced analysis",
-                value=False,
-                help="Use LLM for additional clinical reasoning (requires API key)"
-            )
-        
         submitted = st.form_submit_button("🔍 Analyze for irAEs", type="primary", use_container_width=True)
         
         if submitted:
@@ -119,8 +110,8 @@ def render_freetext_input():
                 symptom_parser = SymptomParser()
                 patient_data.symptoms = symptom_parser.parse(symptoms_text)
             
-            # Run assessment
-            run_assessment(patient_data, use_llm)
+            # Run assessment with MedGemma
+            run_assessment(patient_data, use_llm=True)
 
 
 def render_structured_input():
@@ -245,13 +236,6 @@ def render_structured_input():
         
         st.markdown("---")
         
-        # Analysis options
-        use_llm = st.checkbox(
-            "🤖 Use AI-enhanced analysis",
-            value=False,
-            help="Use LLM for additional clinical reasoning (requires API key)"
-        )
-        
         submitted = st.form_submit_button("🔍 Analyze for irAEs", type="primary", use_container_width=True)
         
         if submitted:
@@ -265,7 +249,8 @@ def render_structured_input():
                 notes_text,
             )
             
-            run_assessment(patient_data, use_llm)
+            # Run assessment with MedGemma
+            run_assessment(patient_data, use_llm=True)
 
 
 def build_patient_data_from_structured(
