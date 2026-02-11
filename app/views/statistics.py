@@ -125,9 +125,9 @@ def render():
     st.subheader("⚡ Rapid Escalation: 48-Hour Window")
     
     st.markdown("""
-    <div style="background-color: #2d2d2d; padding: 1.5rem; border-radius: 10px; margin-bottom: 1rem;">
+    <div style="background-color: #ffffff; padding: 1.5rem; border-radius: 10px; margin-bottom: 1rem; border: 2px solid #e74c3c;">
     <h4 style="color: #e74c3c; margin-top: 0;">⏰ This is why every hour matters</h4>
-    <p>A Grade 2 irAE can escalate to Grade 4 <strong>within 48 hours</strong> if not detected and treated.</p>
+    <p style="color: #333333;">A Grade 2 irAE can escalate to Grade 4 <strong>within 48 hours</strong> if not detected and treated.</p>
     </div>
     """, unsafe_allow_html=True)
     
