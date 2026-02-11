@@ -130,11 +130,19 @@ def main():
     # Initialize LLM client on app load
     get_llm_client()
     
+    # Initialize page state
+    if "current_page" not in st.session_state:
+        st.session_state.current_page = "🏠 Home"
+    
     page = st.sidebar.radio(
         "Navigation",
-        ["🏠 Home", "📈 Statistics", "🔧 Technical", "� Impact Analysis", "�📋 New Assessment", "🧪 Sample Cases", "📊 Results", "ℹ️ About"],
-        index=0,
+        ["🏠 Home", "📈 Statistics", "🔧 Technical", "📊 Impact Analysis", "📋 New Assessment", "🧪 Sample Cases", "📊 Results", "ℹ️ About"],
+        index=["🏠 Home", "📈 Statistics", "🔧 Technical", "📊 Impact Analysis", "📋 New Assessment", "🧪 Sample Cases", "📊 Results", "ℹ️ About"].index(st.session_state.current_page),
+        key="nav_radio"
     )
+    
+    # Update session state when radio changes
+    st.session_state.current_page = page
     
     # Safety disclaimer in sidebar
     st.sidebar.markdown("---")

@@ -87,7 +87,8 @@ def render():
     # Start assessment button
     st.markdown("---")
     if st.button("📋 Start New Assessment", type="primary", use_container_width=True):
-        st.switch_page("pages/assessment.py")
+        st.session_state.current_page = "📋 New Assessment"
+        st.rerun()
     
     # Important disclaimer
     st.markdown("---")
