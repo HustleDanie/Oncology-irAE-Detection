@@ -124,7 +124,7 @@ def main():
     """, unsafe_allow_html=True)
     
     # Sidebar navigation
-    st.sidebar.title("🏥 irAE Assistant")
+    st.sidebar.title("irAE Assistant")
     st.sidebar.markdown("---")
     
     # Initialize LLM client on app load
@@ -132,12 +132,15 @@ def main():
     
     # Initialize page state
     if "current_page" not in st.session_state:
-        st.session_state.current_page = "🏠 Home"
+        st.session_state.current_page = "Home"
+    
+    # Navigation options (using simple text to avoid encoding issues)
+    nav_options = ["Home", "Statistics", "Technical", "Impact Analysis", "New Assessment", "Sample Cases", "About"]
     
     page = st.sidebar.radio(
         "Navigation",
-        ["🏠 Home", "📈 Statistics", "🔧 Technical", "📊 Impact Analysis", "📋 New Assessment", "🧪 Sample Cases", "ℹ️ About"],
-        index=["🏠 Home", "📈 Statistics", "🔧 Technical", "📊 Impact Analysis", "📋 New Assessment", "🧪 Sample Cases", "ℹ️ About"].index(st.session_state.current_page) if st.session_state.current_page in ["🏠 Home", "📈 Statistics", "🔧 Technical", "📊 Impact Analysis", "📋 New Assessment", "🧪 Sample Cases", "ℹ️ About"] else 0,
+        nav_options,
+        index=nav_options.index(st.session_state.current_page) if st.session_state.current_page in nav_options else 0,
         key="nav_radio"
     )
     
@@ -147,26 +150,25 @@ def main():
     # Safety disclaimer in sidebar
     st.sidebar.markdown("---")
     st.sidebar.warning(
-        "⚠️ **Clinical Decision Support Only**\n\n"
+        "**Clinical Decision Support Only**\n\n"
         "This tool does not replace clinical judgment. "
         "All findings must be verified by a qualified clinician."
     )
     
     # Route to appropriate page
-    if page == "🏠 Home":
+    if page == "Home":
         home.render()
-    elif page == "📈 Statistics":
+    elif page == "Statistics":
         statistics.render()
-    elif page == "🔧 Technical":
+    elif page == "Technical":
         technical.render()
-    elif page == "� Impact Analysis":
+    elif page == "Impact Analysis":
         impact.render()
-    elif page == "�📋 New Assessment":
+    elif page == "New Assessment":
         assessment.render()
-    elif page == "🧪 Sample Cases":
+    elif page == "Sample Cases":
         sample_cases.render()
-
-    elif page == "ℹ️ About":
+    elif page == "About":
         about.render()
 
 
