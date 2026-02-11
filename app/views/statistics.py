@@ -71,38 +71,38 @@ def render():
     
     with messy_col1:
         st.markdown("""
-        <div style="background-color: #1a1a2e; padding: 1rem; border-radius: 8px; border-left: 4px solid #e74c3c; font-family: monospace; font-size: 0.85rem;">
-        <strong>📋 CLINICAL NOTE (buried in text)</strong><br><br>
-        <span style="color: #888;">...patient reports increased fatigue x2 weeks.</span>
-        <span style="color: #888;">Appetite decreased. </span>
-        <span style="background-color: #8B0000; padding: 2px 4px;">Loose stools 5-6x/day x4 days</span>
-        <span style="color: #888;">, attributes to dietary changes. Denies blood in stool. Continue current regimen...</span>
+        <div style="background-color: #2d2d3a; padding: 1rem; border-radius: 8px; border-left: 4px solid #e74c3c; font-family: monospace; font-size: 0.85rem; color: #ffffff;">
+        <strong style="color: #ff6b6b;">📋 CLINICAL NOTE (buried in text)</strong><br><br>
+        <span style="color: #aaaaaa;">...patient reports increased fatigue x2 weeks.</span>
+        <span style="color: #aaaaaa;">Appetite decreased. </span>
+        <span style="background-color: #ff4444; color: #ffffff; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Loose stools 5-6x/day x4 days</span>
+        <span style="color: #aaaaaa;">, attributes to dietary changes. Denies blood in stool. Continue current regimen...</span>
         </div>
         """, unsafe_allow_html=True)
     
     with messy_col2:
         st.markdown("""
-        <div style="background-color: #1a1a2e; padding: 1rem; border-radius: 8px; border-left: 4px solid #f39c12; font-family: monospace; font-size: 0.85rem;">
-        <strong>🔬 LAB RESULTS (separate system)</strong><br><br>
-        WBC: 8.2 K/uL<br>
-        Hgb: 11.8 g/dL<br>
-        <span style="background-color: #8B4000; padding: 2px 4px;">CRP: 4.8 mg/dL ↑</span><br>
-        <span style="background-color: #8B4000; padding: 2px 4px;">ESR: 42 mm/hr ↑</span><br>
-        Albumin: 3.2 g/dL<br>
-        <span style="color: #888;">... 47 more results ...</span>
+        <div style="background-color: #2d2d3a; padding: 1rem; border-radius: 8px; border-left: 4px solid #f39c12; font-family: monospace; font-size: 0.85rem; color: #ffffff;">
+        <strong style="color: #ffa500;">🔬 LAB RESULTS (separate system)</strong><br><br>
+        <span style="color: #cccccc;">WBC: 8.2 K/uL</span><br>
+        <span style="color: #cccccc;">Hgb: 11.8 g/dL</span><br>
+        <span style="background-color: #ff8c00; color: #ffffff; padding: 2px 6px; border-radius: 3px; font-weight: bold;">CRP: 4.8 mg/dL ↑</span><br>
+        <span style="background-color: #ff8c00; color: #ffffff; padding: 2px 6px; border-radius: 3px; font-weight: bold;">ESR: 42 mm/hr ↑</span><br>
+        <span style="color: #cccccc;">Albumin: 3.2 g/dL</span><br>
+        <span style="color: #888888;">... 47 more results ...</span>
         </div>
         """, unsafe_allow_html=True)
     
     with messy_col3:
         st.markdown("""
-        <div style="background-color: #1a1a2e; padding: 1rem; border-radius: 8px; border-left: 4px solid #3498db; font-family: monospace; font-size: 0.85rem;">
-        <strong>💊 MEDICATION LIST (another system)</strong><br><br>
-        <span style="background-color: #00008B; padding: 2px 4px;">Pembrolizumab 200mg q3wks</span><br>
-        Metformin 1000mg BID<br>
-        Lisinopril 10mg daily<br>
-        Omeprazole 20mg daily<br>
-        Vitamin D 2000 IU daily<br>
-        <span style="color: #888;">Last infusion: 2 weeks ago</span>
+        <div style="background-color: #2d2d3a; padding: 1rem; border-radius: 8px; border-left: 4px solid #3498db; font-family: monospace; font-size: 0.85rem; color: #ffffff;">
+        <strong style="color: #5dade2;">💊 MEDICATION LIST (another system)</strong><br><br>
+        <span style="background-color: #3498db; color: #ffffff; padding: 2px 6px; border-radius: 3px; font-weight: bold;">Pembrolizumab 200mg q3wks</span><br>
+        <span style="color: #cccccc;">Metformin 1000mg BID</span><br>
+        <span style="color: #cccccc;">Lisinopril 10mg daily</span><br>
+        <span style="color: #cccccc;">Omeprazole 20mg daily</span><br>
+        <span style="color: #cccccc;">Vitamin D 2000 IU daily</span><br>
+        <span style="color: #888888;">Last infusion: 2 weeks ago</span>
         </div>
         """, unsafe_allow_html=True)
     
