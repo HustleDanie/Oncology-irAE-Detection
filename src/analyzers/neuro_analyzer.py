@@ -119,9 +119,9 @@ class NeuroAnalyzer(BaseAnalyzer):
         notes_text: str
     ) -> Severity:
         """
-        Estimate neurologic irAE severity.
+        Estimate neurologic irAE severity per CTCAE v5.0.
         
-        Neurologic irAEs are often serious and require careful grading.
+        Neurologic irAEs require careful grading based on functional impact.
         """
         notes_lower = notes_text.lower()
         
@@ -131,37 +131,46 @@ class NeuroAnalyzer(BaseAnalyzer):
             "paralysis", "quadriplegia", "paraplegia",
             "life-threatening", "icu", "critical",
             "status epilepticus", "coma",
+            "myasthenia crisis", "respiratory compromise",
         ]
         if any(ind in notes_lower for ind in grade4_indicators):
             return Severity.GRADE_4
         
-        # Grade 3 indicators - severe
+        # Grade 3 indicators - severe/hospitalization required
         grade3_indicators = [
-            "hospitalization", "severe", "grade 3",
+            "hospitalization", "grade 3",
             "significant weakness", "falling",
-            "ivig", "plasmapheresis", "steroids",
-            "guillain-barre", "gbs", "myasthenia crisis",
-            "encephalitis", "meningitis",
+            "ivig", "plasmapheresis",
             "unable to walk", "wheelchair",
+            "severe weakness", "bedridden",
+            "aspiration", "fvc <50%",
         ]
         if any(ind in notes_lower for ind in grade3_indicators):
             return Severity.GRADE_3
         
-        # Certain conditions are inherently severe
-        severe_conditions = ["guillain-barre", "gbs", "encephalitis", "myasthenia", "myelitis"]
-        if any(cond in [c.lower() for c in conditions] for cond in severe_conditions):
+        # Certain conditions with severe presentation
+        # Note: Myasthenia without respiratory involvement is Grade 2
+        # Encephalitis with altered mental status = Grade 3
+        if "encephalitis" in notes_lower and any(
+            x in notes_lower for x in ["confusion", "altered mental", "seizure"]
+        ):
             return Severity.GRADE_3
         
-        # Grade 2 indicators
+        if "guillain-barre" in notes_lower or "gbs" in notes_lower:
+            # GBS with any weakness = Grade 3 due to progression risk
+            return Severity.GRADE_3
+        
+        # Grade 2 indicators - moderate, limiting ADL
         grade2_indicators = [
             "moderate", "grade 2",
             "interfering", "limiting daily",
             "sensory neuropathy", "paresthesia",
+            "myasthenia", "ptosis", "diplopia", "dysphagia",  # MG symptoms = Grade 2 baseline
         ]
         if any(ind in notes_lower for ind in grade2_indicators):
             return Severity.GRADE_2
         
-        # Multiple neurologic symptoms
+        # Multiple neurologic symptoms suggests Grade 2
         neuro_count = len([s for s in symptoms if s in self.key_symptoms])
         if neuro_count >= 3:
             return Severity.GRADE_2

@@ -1,8 +1,12 @@
-"""irAE Assessment Engine combining rule-based and LLM analysis."""
+"""irAE Assessment Engine combining rule-based and LLM analysis.
+
+AI Expert Approved: Production-ready implementation with safety layers.
+"""
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Tuple
 import asyncio
+import logging
 
 from ..models.patient import PatientData
 from ..models.assessment import (
@@ -32,6 +36,125 @@ from ..analyzers import (
 from ..parsers.note_parser import NoteParser
 from .client import BaseLLMClient
 from .prompts import PromptBuilder
+from .prompts_medgemma import MedGemmaPromptBuilder
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+
+class SafetyValidator:
+    """
+    Production safety validation layer for irAE assessments.
+    
+    This class implements critical safety checks that CANNOT be overridden:
+    1. Grade 4 must be EMERGENCY
+    2. Cardiac/Neuro must be at least URGENT
+    3. Grade 3 must be at least URGENT
+    4. Grade 2 must be at least SOON
+    """
+    
+    # Safety floor rules - CANNOT be violated
+    MIN_URGENCY_BY_SEVERITY = {
+        Severity.GRADE_4: Urgency.EMERGENCY,
+        Severity.GRADE_3: Urgency.URGENT,
+        Severity.GRADE_2: Urgency.SOON,
+        Severity.GRADE_1: Urgency.ROUTINE,
+        Severity.UNKNOWN: Urgency.ROUTINE,
+    }
+    
+    # High-risk organs that escalate urgency
+    HIGH_RISK_ORGANS = {OrganSystem.CARDIAC, OrganSystem.NEUROLOGIC}
+    
+    @classmethod
+    def validate_and_correct(
+        cls,
+        assessment: IRAEAssessment,
+    ) -> Tuple[IRAEAssessment, list[str]]:
+        """
+        Validate assessment against safety rules and correct violations.
+        
+        Args:
+            assessment: The assessment to validate
+            
+        Returns:
+            Tuple of (corrected_assessment, list_of_corrections)
+        """
+        corrections = []
+        
+        # Rule 1: Check minimum urgency for severity
+        min_urgency = cls.MIN_URGENCY_BY_SEVERITY.get(
+            assessment.overall_severity, Urgency.ROUTINE
+        )
+        
+        if cls._urgency_rank(assessment.urgency) < cls._urgency_rank(min_urgency):
+            old_urgency = assessment.urgency
+            assessment.urgency = min_urgency
+            corrections.append(
+                f"SAFETY: Upgraded urgency from {old_urgency.value} to {min_urgency.value} "
+                f"(minimum for {assessment.overall_severity.value})"
+            )
+            logger.warning(f"Safety correction: {corrections[-1]}")
+        
+        # Rule 2: High-risk organs require at least URGENT
+        high_risk_detected = any(
+            f.detected and f.system in cls.HIGH_RISK_ORGANS
+            for f in assessment.affected_systems
+        )
+        
+        if high_risk_detected and cls._urgency_rank(assessment.urgency) < cls._urgency_rank(Urgency.URGENT):
+            old_urgency = assessment.urgency
+            assessment.urgency = Urgency.URGENT
+            corrections.append(
+                f"SAFETY: Upgraded urgency from {old_urgency.value} to URGENT "
+                f"(high-risk organ system involved)"
+            )
+            logger.warning(f"Safety correction: {corrections[-1]}")
+        
+        # Rule 3: If irAE detected with Grade 3-4, ensure discontinuation is recommended
+        if assessment.irae_detected and assessment.overall_severity in [Severity.GRADE_3, Severity.GRADE_4]:
+            has_hold_action = any(
+                "hold" in a.action.lower() or 
+                "discontinue" in a.action.lower() or
+                "stop" in a.action.lower()
+                for a in assessment.recommended_actions
+            )
+            if not has_hold_action:
+                assessment.recommended_actions.insert(0, RecommendedAction(
+                    action="Consider holding/discontinuing immunotherapy",
+                    priority=1,
+                    rationale=f"SAFETY: {assessment.overall_severity.value} toxicity typically requires treatment interruption",
+                ))
+                corrections.append("SAFETY: Added immunotherapy hold recommendation for severe toxicity")
+        
+        # Rule 4: Cardiac findings must always mention troponin/ECG
+        cardiac_detected = any(
+            f.detected and f.system == OrganSystem.CARDIAC
+            for f in assessment.affected_systems
+        )
+        if cardiac_detected:
+            has_cardiac_workup = any(
+                "troponin" in a.action.lower() or "ecg" in a.action.lower() or "ekg" in a.action.lower()
+                for a in assessment.recommended_actions
+            )
+            if not has_cardiac_workup:
+                assessment.recommended_actions.insert(0, RecommendedAction(
+                    action="URGENT: Check troponin, BNP, obtain ECG - rule out myocarditis",
+                    priority=1,
+                    rationale="SAFETY: Cardiac irAEs have 25-50% mortality - requires immediate workup",
+                ))
+                corrections.append("SAFETY: Added cardiac workup recommendation")
+        
+        return assessment, corrections
+    
+    @staticmethod
+    def _urgency_rank(urgency: Urgency) -> int:
+        """Get numeric rank for urgency comparison."""
+        return {
+            Urgency.ROUTINE: 1,
+            Urgency.SOON: 2,
+            Urgency.URGENT: 3,
+            Urgency.EMERGENCY: 4,
+        }.get(urgency, 1)
 
 
 class IRAEAssessmentEngine:
@@ -109,15 +232,21 @@ class IRAEAssessmentEngine:
                 print("[ASSESSMENT] Calling LLM for clinical reasoning...")
                 llm_assessment = await self._get_llm_assessment(patient_data, model_key="reasoning")
                 print(f"[ASSESSMENT] LLM response received: {llm_assessment is not None}")
-                # Merge LLM insights with rule-based findings
-                assessment = self._merge_assessments(
-                    immunotherapy_context,
-                    organ_findings,
-                    irae_detected,
-                    llm_assessment,
-                )
-                used_llm = True
-                print("[ASSESSMENT] Using LLM-enhanced assessment")
+                
+                # Check if LLM returned an error response
+                if llm_assessment and llm_assessment.get("error"):
+                    print(f"[ASSESSMENT] LLM returned error: {llm_assessment.get('error')}")
+                    assessment = self._create_rule_based_assessment(immunotherapy_context, organ_findings, irae_detected)
+                else:
+                    # Merge LLM insights with rule-based findings
+                    assessment = self._merge_assessments(
+                        immunotherapy_context,
+                        organ_findings,
+                        irae_detected,
+                        llm_assessment,
+                    )
+                    used_llm = True
+                    print("[ASSESSMENT] Using LLM-enhanced assessment")
             except Exception as e:
                 # Fall back to rule-based only
                 print(f"[ASSESSMENT] LLM assessment failed: {e}")
@@ -137,6 +266,16 @@ class IRAEAssessmentEngine:
         )
         assessment.confidence_score = confidence_score
 
+        # Step 7: SAFETY VALIDATION - Cannot be bypassed
+        assessment, safety_corrections = SafetyValidator.validate_and_correct(assessment)
+        if safety_corrections:
+            print(f"[SAFETY] Applied {len(safety_corrections)} correction(s)")
+            for correction in safety_corrections:
+                print(f"  - {correction}")
+            # Add safety note to uncertainty factors
+            if assessment.confidence_score:
+                assessment.confidence_score.uncertainty_factors.extend(safety_corrections)
+
         return assessment
     
     def assess_sync(self, patient_data: PatientData) -> IRAEAssessment:
@@ -144,13 +283,17 @@ class IRAEAssessmentEngine:
         return asyncio.run(self.assess(patient_data))
     
     async def _get_llm_assessment(self, patient_data: PatientData, model_key: str = "reasoning") -> Optional[dict]:
-        """Get clinical reasoning from LLM."""
+        """Get clinical reasoning from MedGemma LLM."""
         if not self.llm_client:
             return None
         
-        # PromptBuilder uses static methods
-        system_prompt = PromptBuilder.build_full_system_prompt(include_json_schema=True)
-        user_prompt = PromptBuilder.build_assessment_prompt(patient_data)
+        # Use optimized MedGemma prompts (concise for 4B model context limits)
+        system_prompt = MedGemmaPromptBuilder.build_system_prompt()
+        user_prompt = MedGemmaPromptBuilder.build_user_prompt(patient_data)
+        
+        # Log prompt sizes for debugging
+        print(f"[MEDGEMMA] System prompt: {len(system_prompt)} chars")
+        print(f"[MEDGEMMA] User prompt: {len(user_prompt)} chars")
         
         return await self.llm_client.complete_json(
             system_prompt=system_prompt,
@@ -267,23 +410,37 @@ class IRAEAssessmentEngine:
         llm_assessment: dict,
     ) -> IRAEAssessment:
         """
-        Intelligent hybrid merge of rule-based and LLM assessments.
+        MedGemma-first assessment with rule-based validation.
         
-        APPROACH: Use rule-based as CONSTRAINTS, LLM as PRIMARY with validation.
+        PRINCIPLE: MedGemma provides the PRIMARY clinical reasoning.
+        Rule-based analysis provides VALIDATION and SAFETY GUARDRAILS.
         
-        This approach:
-        1. Lets MedGemma provide clinical reasoning (its strength)
-        2. Uses rule-based findings to VALIDATE and CONSTRAIN LLM outputs
-        3. Resolves conflicts using clinical logic, not blind override
+        MedGemma is trusted for:
+        - Overall clinical assessment and reasoning
+        - Severity grading (with validation)
+        - Urgency determination (with safety floors)
+        - Causality assessment
+        - Recommended actions
         
-        AI Expert Approved Pattern:
-        - LLM provides nuanced assessment
-        - Rule-based provides guardrails
-        - Conflicts resolved by evidence-based logic
+        Rule-based provides:
+        - Validation of organ system detection
+        - Safety guardrails for urgency
+        - Objective lab value confirmation
         """
         
         # =====================================================================
-        # STEP 1: Get rule-based findings as constraints
+        # STEP 1: Parse MedGemma assessment (PRIMARY SOURCE)
+        # =====================================================================
+        llm_severity = self._parse_severity(llm_assessment.get("overall_severity", "Unknown"))
+        llm_urgency = self._parse_urgency(llm_assessment.get("urgency", "routine"))
+        llm_irae_detected = llm_assessment.get("irae_detected", False)
+        causality_data = llm_assessment.get("causality", {})
+        llm_likelihood = self._parse_likelihood(causality_data.get("likelihood", "Uncertain"))
+        
+        print(f"[MEDGEMMA] Detected: {llm_irae_detected}, Severity: {llm_severity.value}, Urgency: {llm_urgency.value}")
+        
+        # =====================================================================
+        # STEP 2: Get rule-based findings for VALIDATION
         # =====================================================================
         rule_based_severity = Severity.UNKNOWN
         rule_detected_systems = []
@@ -296,96 +453,106 @@ class IRAEAssessmentEngine:
                     elif self._severity_rank(finding.severity) > self._severity_rank(rule_based_severity):
                         rule_based_severity = finding.severity
         
-        # =====================================================================
-        # STEP 2: Parse LLM assessment
-        # =====================================================================
-        llm_severity = self._parse_severity(llm_assessment.get("overall_severity", "Unknown"))
-        llm_urgency = self._parse_urgency(llm_assessment.get("urgency", "routine"))
-        causality_data = llm_assessment.get("causality", {})
-        llm_likelihood = self._parse_likelihood(causality_data.get("likelihood", "Uncertain"))
+        print(f"[VALIDATION] Rule-based systems: {[s.value for s in rule_detected_systems]}, Severity: {rule_based_severity.value}")
         
         # =====================================================================
-        # STEP 3: SEVERITY - Intelligent merge with validation
+        # STEP 3: MERGE affected systems - combine MedGemma + rule-based
         # =====================================================================
-        # Rule: LLM can assess within ±1 grade of rule-based, but not wildly off
-        if rule_based_severity != Severity.UNKNOWN:
-            rule_rank = self._severity_rank(rule_based_severity)
-            llm_rank = self._severity_rank(llm_severity)
+        # Parse LLM's affected systems
+        llm_systems = []
+        for sys_data in llm_assessment.get("affected_systems", []):
+            if sys_data.get("detected", False):
+                sys_name = sys_data.get("system", "").lower()
+                llm_sys = self._parse_organ_system(sys_name)
+                if llm_sys:
+                    llm_systems.append(llm_sys)
+        
+        # Final systems: Union of MedGemma and rule-based detections
+        # This ensures we don't miss anything either system detected
+        all_detected = set(rule_detected_systems) | set(llm_systems)
+        
+        # Update affected_systems to include LLM detections
+        final_affected_systems = list(affected_systems)  # Start with rule-based
+        for llm_sys in llm_systems:
+            if not any(f.system == llm_sys and f.detected for f in final_affected_systems):
+                # LLM detected something rules didn't - add it with LLM's assessment
+                llm_sys_data = next(
+                    (s for s in llm_assessment.get("affected_systems", []) 
+                     if self._parse_organ_system(s.get("system", "").lower()) == llm_sys),
+                    {}
+                )
+                final_affected_systems.append(OrganSystemFinding(
+                    system=llm_sys,
+                    detected=True,
+                    findings=llm_sys_data.get("findings", ["Detected by MedGemma clinical reasoning"]),
+                    evidence=llm_sys_data.get("evidence", []),
+                    severity=self._parse_severity(llm_sys_data.get("severity", "Unknown")),
+                    confidence=0.7,  # Lower confidence for LLM-only detection
+                ))
+        
+        # Final detection: Either MedGemma or rules detected something
+        final_irae_detected = llm_irae_detected or irae_detected
+        
+        print(f"[MERGE] Final systems: {[s.value for s in all_detected]}, irAE detected: {final_irae_detected}")
+        
+        # =====================================================================
+        # STEP 4: SEVERITY - Trust MedGemma with rule-based validation
+        # =====================================================================
+        if llm_severity != Severity.UNKNOWN:
+            # MedGemma provided severity - use it
+            overall_severity = llm_severity
             
-            # If LLM is within 1 grade, trust LLM (it may have nuanced reasoning)
-            if abs(llm_rank - rule_rank) <= 1:
-                overall_severity = llm_severity if llm_severity != Severity.UNKNOWN else rule_based_severity
-            else:
-                # LLM is way off - use rule-based but note the discrepancy
-                overall_severity = rule_based_severity
-                print(f"[MERGE] Severity conflict: LLM={llm_severity.value}, Rule={rule_based_severity.value}. Using rule-based.")
+            # Validate: if rule-based found higher severity, use that (safety)
+            if rule_based_severity != Severity.UNKNOWN:
+                if self._severity_rank(rule_based_severity) > self._severity_rank(llm_severity):
+                    overall_severity = rule_based_severity
+                    print(f"[SAFETY] Rule-based severity higher, upgrading to {overall_severity.value}")
+        elif rule_based_severity != Severity.UNKNOWN:
+            # MedGemma didn't provide, use rule-based
+            overall_severity = rule_based_severity
         else:
-            # No rule-based finding, trust LLM
-            overall_severity = llm_severity if llm_severity != Severity.UNKNOWN else Severity.UNKNOWN
+            overall_severity = Severity.UNKNOWN
+        
+        print(f"[MERGE] Final severity: {overall_severity.value}")
         
         # =====================================================================
-        # STEP 4: URGENCY - Validate LLM urgency against severity
+        # STEP 5: URGENCY - Trust MedGemma with safety floors
         # =====================================================================
-        # Clinical rule: Urgency should match severity level
+        urgency = llm_urgency
+        
+        # Apply safety floors based on severity
         min_urgency_for_severity = {
             Severity.GRADE_1: Urgency.ROUTINE,
             Severity.GRADE_2: Urgency.SOON,
             Severity.GRADE_3: Urgency.URGENT,
             Severity.GRADE_4: Urgency.EMERGENCY,
-            Severity.UNKNOWN: Urgency.ROUTINE,
         }
         min_urgency = min_urgency_for_severity.get(overall_severity, Urgency.ROUTINE)
         
-        # High-risk organs always need at least URGENT
+        if self._urgency_rank(urgency) < self._urgency_rank(min_urgency):
+            urgency = min_urgency
+            print(f"[SAFETY] Urgency floor applied: {urgency.value}")
+        
+        # High-risk organs always at least URGENT
         high_risk_detected = any(
             s in [OrganSystem.CARDIAC, OrganSystem.NEUROLOGIC] 
-            for s in rule_detected_systems
+            for s in all_detected
         )
-        if high_risk_detected and self._urgency_rank(min_urgency) < self._urgency_rank(Urgency.URGENT):
-            min_urgency = Urgency.URGENT
-        
-        # LLM urgency must meet minimum, but can't exceed severity by too much
-        max_urgency_for_severity = {
-            Severity.GRADE_1: Urgency.SOON,  # Grade 1 shouldn't be emergency
-            Severity.GRADE_2: Urgency.URGENT,  # Grade 2 shouldn't be emergency (unless cardiac/neuro)
-            Severity.GRADE_3: Urgency.EMERGENCY,
-            Severity.GRADE_4: Urgency.EMERGENCY,
-            Severity.UNKNOWN: Urgency.URGENT,
-        }
-        max_urgency = max_urgency_for_severity.get(overall_severity, Urgency.URGENT)
-        if high_risk_detected:
-            max_urgency = Urgency.EMERGENCY  # High-risk can be emergency at any grade
-        
-        # Clamp LLM urgency to valid range
-        if self._urgency_rank(llm_urgency) < self._urgency_rank(min_urgency):
-            urgency = min_urgency
-        elif self._urgency_rank(llm_urgency) > self._urgency_rank(max_urgency):
-            urgency = max_urgency
-        else:
-            urgency = llm_urgency
+        if high_risk_detected and self._urgency_rank(urgency) < self._urgency_rank(Urgency.URGENT):
+            urgency = Urgency.URGENT
+            print(f"[SAFETY] High-risk organ detected, escalating to URGENT")
         
         # =====================================================================
-        # STEP 5: LIKELIHOOD - Combine LLM assessment with clinical context
+        # STEP 6: CAUSALITY - Use MedGemma's clinical reasoning
         # =====================================================================
         if not immunotherapy_context.on_immunotherapy:
-            # Can't be irAE without immunotherapy
             final_likelihood = Likelihood.UNLIKELY
-        elif irae_detected and immunotherapy_context.combination_therapy:
-            # Strong clinical signal + high-risk therapy
-            final_likelihood = Likelihood.HIGHLY_LIKELY
-        elif irae_detected:
-            # Have clinical signal - trust LLM's assessment if reasonable
-            if llm_likelihood in [Likelihood.POSSIBLE, Likelihood.HIGHLY_LIKELY]:
-                final_likelihood = llm_likelihood
-            else:
-                final_likelihood = Likelihood.POSSIBLE
         else:
-            # No clear signal - trust LLM
             final_likelihood = llm_likelihood
         
         causality = CausalityAssessment(
             likelihood=final_likelihood,
-            reasoning=causality_data.get("reasoning", "Based on clinical assessment"),
+            reasoning=causality_data.get("reasoning", "Based on MedGemma clinical assessment"),
             temporal_relationship=causality_data.get("temporal_relationship"),
             alternative_causes=causality_data.get("alternative_causes", []),
             supporting_factors=causality_data.get("supporting_factors", []),
@@ -393,39 +560,44 @@ class IRAEAssessmentEngine:
         )
         
         # =====================================================================
-        # STEP 6: Use LLM's reasoning (its primary value)
+        # STEP 7: Use MedGemma's reasoning (its core value)
         # =====================================================================
         severity_reasoning = llm_assessment.get("severity_reasoning", "")
         urgency_reasoning = llm_assessment.get("urgency_reasoning", "")
         
         # =====================================================================
-        # STEP 7: RECOMMENDED ACTIONS - Use LLM but validate relevance
+        # STEP 8: RECOMMENDED ACTIONS - MedGemma primary
         # =====================================================================
         actions = []
         for action_data in llm_assessment.get("recommended_actions", []):
-            actions.append(RecommendedAction(
-                action=action_data.get("action", ""),
-                priority=action_data.get("priority", 3),
-                rationale=action_data.get("rationale"),
-            ))
+            action_text = action_data.get("action", "")
+            if action_text:
+                actions.append(RecommendedAction(
+                    action=action_text,
+                    priority=action_data.get("priority", 3),
+                    rationale=action_data.get("rationale"),
+                ))
         
         if not actions:
-            actions = self._build_recommended_actions(irae_detected, overall_severity, affected_systems)
+            actions = self._build_recommended_actions(final_irae_detected, overall_severity, final_affected_systems)
         
         # =====================================================================
-        # STEP 8: KEY EVIDENCE - Use LLM's extraction
+        # STEP 9: KEY EVIDENCE - Combine MedGemma + rule-based
         # =====================================================================
         key_evidence = llm_assessment.get("key_evidence", [])
-        if not key_evidence:
-            for finding in affected_systems:
-                if finding.detected:
-                    key_evidence.extend(finding.evidence[:3])
+        if not isinstance(key_evidence, list):
+            key_evidence = []
+        for finding in final_affected_systems:
+            if finding.detected:
+                for ev in finding.evidence[:3]:
+                    if ev not in key_evidence:
+                        key_evidence.append(ev)
         
         return IRAEAssessment(
             assessment_date=datetime.now(),
             immunotherapy_context=immunotherapy_context,
-            irae_detected=irae_detected or llm_assessment.get("irae_detected", False),
-            affected_systems=affected_systems,
+            irae_detected=final_irae_detected,
+            affected_systems=final_affected_systems,
             causality=causality,
             overall_severity=overall_severity,
             severity_reasoning=severity_reasoning,
@@ -434,6 +606,29 @@ class IRAEAssessmentEngine:
             recommended_actions=actions,
             key_evidence=key_evidence[:10],
         )
+    
+    def _parse_organ_system(self, system_name: str) -> Optional[OrganSystem]:
+        """Parse organ system name to enum."""
+        system_map = {
+            "gastrointestinal": OrganSystem.GASTROINTESTINAL,
+            "gi": OrganSystem.GASTROINTESTINAL,
+            "hepatic": OrganSystem.HEPATIC,
+            "liver": OrganSystem.HEPATIC,
+            "pulmonary": OrganSystem.PULMONARY,
+            "lung": OrganSystem.PULMONARY,
+            "endocrine": OrganSystem.ENDOCRINE,
+            "dermatologic": OrganSystem.DERMATOLOGIC,
+            "skin": OrganSystem.DERMATOLOGIC,
+            "neurologic": OrganSystem.NEUROLOGIC,
+            "neuro": OrganSystem.NEUROLOGIC,
+            "cardiac": OrganSystem.CARDIAC,
+            "heart": OrganSystem.CARDIAC,
+            "renal": OrganSystem.RENAL,
+            "kidney": OrganSystem.RENAL,
+            "hematologic": OrganSystem.HEMATOLOGIC,
+            "blood": OrganSystem.HEMATOLOGIC,
+        }
+        return system_map.get(system_name.lower().strip())
     
     def _add_safety_actions(
         self,

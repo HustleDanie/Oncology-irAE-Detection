@@ -240,29 +240,138 @@ class HuggingFaceClient(BaseLLMClient):
         self,
         system_prompt: str,
         user_prompt: str,
-        temperature: float = 0.1,
+        temperature: float = 0.05,  # Very low for consistent medical assessments
         max_tokens: int = 3000,
         model_key: str = None  # Kept for backwards compatibility, ignored
     ) -> dict:
-        """Generate a JSON completion using MedGemma model."""
-        json_system_prompt = f"{system_prompt}\n\nIMPORTANT: Your response MUST be a single, valid JSON object and nothing else. Do not include any text before or after the JSON."
+        """Generate a JSON completion using MedGemma model with robust extraction."""
         
-        response_text = await self.complete(
-            json_system_prompt, user_prompt, temperature, max_tokens
-        )
+        # Simplified JSON instruction - be very explicit
+        json_instruction = """
+
+CRITICAL INSTRUCTIONS:
+1. Your ENTIRE response must be a single valid JSON object
+2. Start with { and end with }
+3. Do NOT wrap in markdown code blocks (no ```)
+4. Do NOT include any text before or after the JSON
+5. All string values must be properly quoted
+6. Use double quotes for keys and string values
+
+BEGIN YOUR JSON RESPONSE NOW:"""
         
+        json_system_prompt = f"{system_prompt}\n{json_instruction}"
+        
+        # Try up to 2 times
+        for attempt in range(2):
+            response_text = await self.complete(
+                json_system_prompt, user_prompt, temperature, max_tokens
+            )
+            
+            # Clean the response
+            response_text = response_text.strip()
+            
+            # Try multiple extraction strategies
+            json_obj = self._extract_json(response_text)
+            if json_obj is not None:
+                return json_obj
+            
+            # If first attempt failed, try with higher temperature
+            if attempt == 0:
+                print(f"[MEDGEMMA] JSON extraction failed, retrying with adjusted temperature...")
+                temperature = 0.1
+        
+        # All attempts failed - return error dict
+        print(f"[MEDGEMMA] Error: Could not extract valid JSON after retries")
+        print(f"[MEDGEMMA] Raw response (first 500 chars): {response_text[:500]}")
+        return self._create_fallback_response()
+    
+    def _extract_json(self, response_text: str) -> Optional[dict]:
+        """Try multiple strategies to extract JSON from response."""
+        
+        # Strategy 1: Response is already valid JSON
+        try:
+            return json.loads(response_text)
+        except json.JSONDecodeError:
+            pass
+        
+        # Strategy 2: Extract JSON from markdown code blocks
+        if "```json" in response_text:
+            try:
+                start = response_text.find("```json") + 7
+                end = response_text.find("```", start)
+                if end > start:
+                    json_str = response_text[start:end].strip()
+                    if json_str:  # Not empty
+                        return json.loads(json_str)
+            except (json.JSONDecodeError, ValueError):
+                pass
+        
+        # Strategy 3: Extract from generic code blocks
+        if "```" in response_text:
+            try:
+                # Find content between first ``` and next ```
+                parts = response_text.split("```")
+                for part in parts[1::2]:  # Odd indices are inside code blocks
+                    part = part.strip()
+                    if part.startswith("json"):
+                        part = part[4:].strip()
+                    if part.startswith("{"):
+                        return json.loads(part)
+            except (json.JSONDecodeError, ValueError, IndexError):
+                pass
+        
+        # Strategy 4: Find JSON object boundaries
+        try:
+            start_index = response_text.find('{')
+            if start_index != -1:
+                # Find matching closing brace
+                depth = 0
+                for i, char in enumerate(response_text[start_index:], start_index):
+                    if char == '{':
+                        depth += 1
+                    elif char == '}':
+                        depth -= 1
+                        if depth == 0:
+                            json_str = response_text[start_index:i+1]
+                            return json.loads(json_str)
+        except (json.JSONDecodeError, ValueError):
+            pass
+        
+        # Strategy 5: Try to find any valid JSON object
         try:
             start_index = response_text.find('{')
             end_index = response_text.rfind('}')
             if start_index != -1 and end_index != -1 and end_index > start_index:
                 json_str = response_text[start_index:end_index+1]
                 return json.loads(json_str)
-            else:
-                raise json.JSONDecodeError("No JSON object found in response", response_text, 0)
-        except json.JSONDecodeError as e:
-            print(f"Error decoding JSON from LLM response: {e}")
-            print(f"Raw response: {response_text}")
-            return {"error": "Failed to parse JSON from model response", "raw_response": response_text}
+        except json.JSONDecodeError:
+            pass
+        
+        return None
+    
+    def _create_fallback_response(self) -> dict:
+        """Create a safe fallback response when JSON parsing fails."""
+        return {
+            "error": "Failed to parse JSON from model response",
+            "irae_detected": False,
+            "affected_systems": [],
+            "overall_severity": "Unknown",
+            "urgency": "routine",
+            "causality": {
+                "likelihood": "Uncertain",
+                "reasoning": "Unable to complete assessment due to model response error"
+            },
+            "recommended_actions": [
+                {
+                    "action": "Manual clinical review required - automated assessment failed",
+                    "priority": 1,
+                    "rationale": "Model response could not be parsed"
+                }
+            ],
+            "key_evidence": [],
+            "severity_reasoning": "Assessment incomplete",
+            "urgency_reasoning": "Assessment incomplete - manual review needed"
+        }
 
 
 class AnthropicClient(BaseLLMClient):

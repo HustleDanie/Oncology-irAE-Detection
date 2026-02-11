@@ -29,13 +29,6 @@ Check medications for checkpoint inhibitors:
 ### STEP 2: ORGAN SYSTEM SCREENING
 Check EACH system for irAE signals:
 
-**CRITICAL: AVOID OVER-DETECTION**
-- ONLY report an organ system as affected if there is CLEAR, SPECIFIC evidence
-- Normal lab values = NOT affected (even if slightly abnormal)
-- Absence of symptoms = NOT affected
-- "Could be" or "consider" is NOT detection - need ACTUAL findings
-- When in doubt, the organ is NOT affected
-
 **GASTROINTESTINAL:**
 - Diarrhea: Count stools/day → Grade 1 (<4), Grade 2 (4-6), Grade 3 (≥7 or bloody)
 - Colitis: Abdominal pain, cramping, blood in stool
