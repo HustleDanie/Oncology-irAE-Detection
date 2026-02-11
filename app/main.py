@@ -63,7 +63,7 @@ if "patient_data" not in st.session_state:
 if "assessment_result" not in st.session_state:
     st.session_state.assessment_result = None
 
-from app.views import home, assessment, results, about, sample_cases, statistics, technical
+from app.views import home, assessment, results, about, sample_cases, statistics, technical, impact
 
 
 def main():
@@ -132,7 +132,7 @@ def main():
     
     page = st.sidebar.radio(
         "Navigation",
-        ["🏠 Home", "📈 Statistics", "🔧 Technical", "📋 New Assessment", "🧪 Sample Cases", "📊 Results", "ℹ️ About"],
+        ["🏠 Home", "📈 Statistics", "🔧 Technical", "� Impact Analysis", "�📋 New Assessment", "🧪 Sample Cases", "📊 Results", "ℹ️ About"],
         index=0,
     )
     
@@ -151,7 +151,9 @@ def main():
         statistics.render()
     elif page == "🔧 Technical":
         technical.render()
-    elif page == "📋 New Assessment":
+    elif page == "� Impact Analysis":
+        impact.render()
+    elif page == "�📋 New Assessment":
         assessment.render()
     elif page == "🧪 Sample Cases":
         sample_cases.render()
