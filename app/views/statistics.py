@@ -522,7 +522,7 @@ def render():
     
     st.markdown("""
     <div class="info-box">
-        <strong>💡 For hackathon demo:</strong> Copy any case below into the assessment tool. Expected outputs show what MedGemma should predict.
+        <strong>💡 For hackathon demo:</strong> Copy each field into the corresponding input box in New Assessment → Free Text Input. Expected outputs show what MedGemma should predict.
     </div>
     """, unsafe_allow_html=True)
     
@@ -533,19 +533,26 @@ def render():
         c1_col1, c1_col2 = st.columns([3, 2])
         
         with c1_col1:
-            st.markdown("**📝 Copy this clinical case:**")
-            case1 = """58-year-old male with metastatic melanoma on pembrolizumab (cycle 4, last infusion 2 weeks ago).
-
-Chief Complaint: Diarrhea x4 days
-
-HPI: Patient reports 5-6 loose, watery stools daily for the past 4 days. Mild abdominal cramping. No blood in stool. No fever. Appetite slightly decreased.
-
-Medications: Pembrolizumab 200mg IV q3wks, metformin 1000mg BID, lisinopril 10mg daily
-
-Labs: WBC 8.2, CRP 4.8 mg/dL (elevated), ESR 42 mm/hr (elevated), albumin 3.2
-
-Vitals: T 98.6F, BP 128/78, HR 82"""
-            st.code(case1, language=None)
+            st.markdown("**📝 Input Fields (copy into form):**")
+            st.markdown("""
+            | Field | Value |
+            |-------|-------|
+            | **Age** | 58 |
+            | **Cancer Type** | Metastatic melanoma |
+            | **☑ Immunotherapy** | ✓ Checked |
+            """)
+            
+            st.markdown("**💊 Medications:**")
+            st.code("Pembrolizumab 200mg IV q3wks\nMetformin 1000mg BID\nLisinopril 10mg daily", language=None)
+            
+            st.markdown("**🩺 Symptoms:**")
+            st.code("Diarrhea - 5-6 loose watery stools daily\nAbdominal cramping - mild\nDecreased appetite", language=None)
+            
+            st.markdown("**🔬 Laboratory Results:**")
+            st.code("WBC 8.2\nCRP 4.8 mg/dL (H)\nESR 42 mm/hr (H)\nAlbumin 3.2", language=None)
+            
+            st.markdown("**📋 Clinical Notes:**")
+            st.code("58M on pembrolizumab cycle 4, last infusion 2 weeks ago. Diarrhea x4 days. No blood in stool. No fever. T 98.6F, BP 128/78, HR 82.", language=None)
         
         with c1_col2:
             st.markdown("**✅ Expected Output:**")
@@ -570,21 +577,26 @@ Vitals: T 98.6F, BP 128/78, HR 82"""
         c2_col1, c2_col2 = st.columns([3, 2])
         
         with c2_col1:
-            st.markdown("**📝 Copy this clinical case:**")
-            case2 = """67-year-old female with NSCLC on nivolumab + ipilimumab (cycle 2, last infusion 10 days ago).
-
-Chief Complaint: Chest pain and shortness of breath x2 days
-
-HPI: Progressive dyspnea on exertion, now at rest. Substernal chest pressure. New fatigue and palpitations. Unable to climb one flight of stairs without stopping.
-
-Medications: Nivolumab 240mg + Ipilimumab 1mg/kg IV q3wks, aspirin 81mg, atorvastatin 40mg
-
-Labs: Troponin I 0.89 ng/mL (elevated, normal <0.04), BNP 580 pg/mL (elevated), CK-MB 12.4
-
-ECG: New PR prolongation, diffuse ST changes
-
-Vitals: T 99.1F, BP 102/68, HR 108, O2 sat 92% on RA"""
-            st.code(case2, language=None)
+            st.markdown("**📝 Input Fields (copy into form):**")
+            st.markdown("""
+            | Field | Value |
+            |-------|-------|
+            | **Age** | 67 |
+            | **Cancer Type** | Non-small cell lung cancer |
+            | **☑ Immunotherapy** | ✓ Checked |
+            """)
+            
+            st.markdown("**💊 Medications:**")
+            st.code("Nivolumab 240mg IV q2wks\nIpilimumab 1mg/kg IV q6wks\nAspirin 81mg daily\nAtorvastatin 40mg daily", language=None)
+            
+            st.markdown("**🩺 Symptoms:**")
+            st.code("Chest pain - substernal pressure x2 days\nShortness of breath - at rest\nFatigue - severe, new onset\nPalpitations", language=None)
+            
+            st.markdown("**🔬 Laboratory Results:**")
+            st.code("Troponin I 0.89 ng/mL (H)\nBNP 580 pg/mL (H)\nCK-MB 12.4 (H)", language=None)
+            
+            st.markdown("**📋 Clinical Notes:**")
+            st.code("67F NSCLC on nivo/ipi cycle 2, last infusion 10 days ago. Progressive dyspnea, chest pressure. ECG: new PR prolongation, diffuse ST changes. T 99.1F, BP 102/68, HR 108, O2 92% RA.", language=None)
         
         with c2_col2:
             st.markdown("**✅ Expected Output:**")
@@ -610,20 +622,26 @@ Vitals: T 99.1F, BP 102/68, HR 108, O2 sat 92% on RA"""
         c3_col1, c3_col2 = st.columns([3, 2])
         
         with c3_col1:
-            st.markdown("**📝 Copy this clinical case:**")
-            case3 = """52-year-old male with renal cell carcinoma on pembrolizumab (cycle 6).
-
-Chief Complaint: Routine labs show elevated liver enzymes
-
-HPI: Patient feels well. No jaundice, no abdominal pain, no nausea. No alcohol use. No new medications.
-
-Medications: Pembrolizumab 200mg IV q3wks, amlodipine 5mg daily
-
-Labs (today): AST 168 U/L (normal <40), ALT 195 U/L (normal <41), ALP 98, Total bili 1.1
-Labs (3 weeks ago): AST 32, ALT 38, ALP 85, Total bili 0.8
-
-Vitals: T 98.2F, BP 132/82, HR 76"""
-            st.code(case3, language=None)
+            st.markdown("**📝 Input Fields (copy into form):**")
+            st.markdown("""
+            | Field | Value |
+            |-------|-------|
+            | **Age** | 52 |
+            | **Cancer Type** | Renal cell carcinoma |
+            | **☑ Immunotherapy** | ✓ Checked |
+            """)
+            
+            st.markdown("**💊 Medications:**")
+            st.code("Pembrolizumab 200mg IV q3wks\nAmlodipine 5mg daily", language=None)
+            
+            st.markdown("**🩺 Symptoms:**")
+            st.code("Asymptomatic\nNo jaundice\nNo abdominal pain\nNo nausea", language=None)
+            
+            st.markdown("**🔬 Laboratory Results:**")
+            st.code("AST 168 U/L (H)\nALT 195 U/L (H)\nALP 98\nTotal bilirubin 1.1\nBaseline AST 32, ALT 38", language=None)
+            
+            st.markdown("**📋 Clinical Notes:**")
+            st.code("52M RCC on pembrolizumab cycle 6. Routine labs show elevated LFTs. Patient feels well. No alcohol. No new meds. T 98.2F, BP 132/82, HR 76.", language=None)
         
         with c3_col2:
             st.markdown("**✅ Expected Output:**")
@@ -648,21 +666,26 @@ Vitals: T 98.2F, BP 132/82, HR 76"""
         c4_col1, c4_col2 = st.columns([3, 2])
         
         with c4_col1:
-            st.markdown("**📝 Copy this clinical case:**")
-            case4 = """71-year-old male with metastatic bladder cancer on atezolizumab (cycle 5).
-
-Chief Complaint: Progressive shortness of breath x1 week
-
-HPI: Worsening dyspnea, now requiring oxygen at home. Dry cough x10 days. Unable to perform daily activities.
-
-Medications: Atezolizumab 1200mg IV q3wks, metoprolol 25mg BID, omeprazole 20mg
-
-Labs: WBC 11.2, CRP 8.4 mg/dL (elevated)
-
-Imaging: CT chest shows new bilateral ground-glass opacities, no PE
-
-Vitals: T 98.8F, BP 138/84, HR 96, RR 24, O2 sat 88% on RA (94% on 3L NC)"""
-            st.code(case4, language=None)
+            st.markdown("**📝 Input Fields (copy into form):**")
+            st.markdown("""
+            | Field | Value |
+            |-------|-------|
+            | **Age** | 71 |
+            | **Cancer Type** | Metastatic bladder cancer |
+            | **☑ Immunotherapy** | ✓ Checked |
+            """)
+            
+            st.markdown("**💊 Medications:**")
+            st.code("Atezolizumab 1200mg IV q3wks\nMetoprolol 25mg BID\nOmeprazole 20mg daily", language=None)
+            
+            st.markdown("**🩺 Symptoms:**")
+            st.code("Shortness of breath - progressive x1 week\nDry cough x10 days\nUnable to perform daily activities\nRequiring home oxygen", language=None)
+            
+            st.markdown("**🔬 Laboratory Results:**")
+            st.code("WBC 11.2\nCRP 8.4 mg/dL (H)\nO2 sat 88% on RA\nO2 sat 94% on 3L NC", language=None)
+            
+            st.markdown("**📋 Clinical Notes:**")
+            st.code("71M bladder ca on atezolizumab cycle 5. Worsening dyspnea. CT chest: bilateral ground-glass opacities, no PE. T 98.8F, BP 138/84, HR 96, RR 24.", language=None)
         
         with c4_col2:
             st.markdown("**✅ Expected Output:**")
@@ -687,20 +710,26 @@ Vitals: T 98.8F, BP 138/84, HR 96, RR 24, O2 sat 88% on RA (94% on 3L NC)"""
         c5_col1, c5_col2 = st.columns([3, 2])
         
         with c5_col1:
-            st.markdown("**📝 Copy this clinical case:**")
-            case5 = """45-year-old female with melanoma on pembrolizumab (cycle 8).
-
-Chief Complaint: Routine lab monitoring
-
-HPI: Patient feels well overall. Mild fatigue but attributes to work stress. No weight changes, no palpitations.
-
-Medications: Pembrolizumab 200mg IV q3wks, vitamin D 2000 IU daily
-
-Labs: TSH 6.8 mIU/L (elevated, normal 0.4-4.0), Free T4 0.9 ng/dL (low-normal)
-Prior TSH (2 months ago): 2.1 mIU/L
-
-Vitals: T 98.4F, BP 118/72, HR 68"""
-            st.code(case5, language=None)
+            st.markdown("**📝 Input Fields (copy into form):**")
+            st.markdown("""
+            | Field | Value |
+            |-------|-------|
+            | **Age** | 45 |
+            | **Cancer Type** | Melanoma |
+            | **☑ Immunotherapy** | ✓ Checked |
+            """)
+            
+            st.markdown("**💊 Medications:**")
+            st.code("Pembrolizumab 200mg IV q3wks\nVitamin D 2000 IU daily", language=None)
+            
+            st.markdown("**🩺 Symptoms:**")
+            st.code("Fatigue - mild\nNo weight changes\nNo palpitations", language=None)
+            
+            st.markdown("**🔬 Laboratory Results:**")
+            st.code("TSH 6.8 mIU/L (H)\nFree T4 0.9 ng/dL (low-normal)\nPrior TSH 2.1 mIU/L", language=None)
+            
+            st.markdown("**📋 Clinical Notes:**")
+            st.code("45F melanoma on pembrolizumab cycle 8. Routine labs. Feels well, mild fatigue attributed to work. T 98.4F, BP 118/72, HR 68.", language=None)
         
         with c5_col2:
             st.markdown("**✅ Expected Output:**")
