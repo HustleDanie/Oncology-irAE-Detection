@@ -56,6 +56,174 @@ def render():
     st.markdown("---")
     
     # =========================================================================
+    # THE PROBLEM: MESSY CLINICAL DATA
+    # =========================================================================
+    st.subheader("🔴 THE PROBLEM: Scattered Clinical Data")
+    
+    st.error("""
+    **Real clinical data is fragmented across multiple systems.**
+    Oncologists have ~15 minutes per patient and must manually connect dots across labs, notes, vitals, and medications.
+    Critical irAE signals get lost in the noise.
+    """)
+    
+    # Show the messy data in multiple columns to simulate fragmentation
+    messy_col1, messy_col2, messy_col3 = st.columns(3)
+    
+    with messy_col1:
+        st.markdown("""
+        <div style="background-color: #1a1a2e; padding: 1rem; border-radius: 8px; border-left: 4px solid #e74c3c; font-family: monospace; font-size: 0.85rem;">
+        <strong>📋 CLINICAL NOTE (buried in text)</strong><br><br>
+        <span style="color: #888;">...patient reports increased fatigue x2 weeks.</span>
+        <span style="color: #888;">Appetite decreased. </span>
+        <span style="background-color: #8B0000; padding: 2px 4px;">Loose stools 5-6x/day x4 days</span>
+        <span style="color: #888;">, attributes to dietary changes. Denies blood in stool. Continue current regimen...</span>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with messy_col2:
+        st.markdown("""
+        <div style="background-color: #1a1a2e; padding: 1rem; border-radius: 8px; border-left: 4px solid #f39c12; font-family: monospace; font-size: 0.85rem;">
+        <strong>🔬 LAB RESULTS (separate system)</strong><br><br>
+        WBC: 8.2 K/uL<br>
+        Hgb: 11.8 g/dL<br>
+        <span style="background-color: #8B4000; padding: 2px 4px;">CRP: 4.8 mg/dL ↑</span><br>
+        <span style="background-color: #8B4000; padding: 2px 4px;">ESR: 42 mm/hr ↑</span><br>
+        Albumin: 3.2 g/dL<br>
+        <span style="color: #888;">... 47 more results ...</span>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with messy_col3:
+        st.markdown("""
+        <div style="background-color: #1a1a2e; padding: 1rem; border-radius: 8px; border-left: 4px solid #3498db; font-family: monospace; font-size: 0.85rem;">
+        <strong>💊 MEDICATION LIST (another system)</strong><br><br>
+        <span style="background-color: #00008B; padding: 2px 4px;">Pembrolizumab 200mg q3wks</span><br>
+        Metformin 1000mg BID<br>
+        Lisinopril 10mg daily<br>
+        Omeprazole 20mg daily<br>
+        Vitamin D 2000 IU daily<br>
+        <span style="color: #888;">Last infusion: 2 weeks ago</span>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # The invisible connection
+    st.warning("""
+    **🔗 The connection that's easy to miss:**
+    
+    Pembrolizumab (immunotherapy) + Diarrhea 5-6x/day + Elevated CRP/ESR = **Grade 2 Colitis Pattern**
+    
+    But these signals are in **3 different systems**. Without AI assistance, it's easy to miss until symptoms escalate.
+    """)
+    
+    st.markdown("---")
+    
+    # =========================================================================
+    # RAPID ESCALATION TIMELINE
+    # =========================================================================
+    st.subheader("⚡ Rapid Escalation: 48-Hour Window")
+    
+    st.markdown("""
+    <div style="background-color: #2d2d2d; padding: 1.5rem; border-radius: 10px; margin-bottom: 1rem;">
+    <h4 style="color: #e74c3c; margin-top: 0;">⏰ This is why every hour matters</h4>
+    <p>A Grade 2 irAE can escalate to Grade 4 <strong>within 48 hours</strong> if not detected and treated.</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Visual timeline with arrows
+    esc_col1, arrow1, esc_col2, arrow2, esc_col3, arrow3, esc_col4 = st.columns([2, 0.5, 2, 0.5, 2, 0.5, 2])
+    
+    with esc_col1:
+        st.markdown("""
+        <div style="background-color: #ffc107; color: black; padding: 1rem; border-radius: 10px; text-align: center; height: 180px;">
+        <h3 style="margin: 0; color: black;">Hour 0</h3>
+        <h4 style="color: black;">Grade 2</h4>
+        <hr style="border-color: black;">
+        <small>
+        5-6 loose stools/day<br>
+        Patient uncomfortable<br>
+        <strong>DETECTABLE</strong>
+        </small>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with arrow1:
+        st.markdown("""
+        <div style="display: flex; align-items: center; height: 180px; justify-content: center;">
+        <span style="font-size: 2rem; color: #ff6b6b;">→</span>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with esc_col2:
+        st.markdown("""
+        <div style="background-color: #fd7e14; color: white; padding: 1rem; border-radius: 10px; text-align: center; height: 180px;">
+        <h3 style="margin: 0;">Hour 12-24</h3>
+        <h4>Grade 2-3</h4>
+        <hr>
+        <small>
+        Worsening frequency<br>
+        Abdominal cramping<br>
+        <strong>NEEDS STEROIDS</strong>
+        </small>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with arrow2:
+        st.markdown("""
+        <div style="display: flex; align-items: center; height: 180px; justify-content: center;">
+        <span style="font-size: 2rem; color: #ff6b6b;">→</span>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with esc_col3:
+        st.markdown("""
+        <div style="background-color: #dc3545; color: white; padding: 1rem; border-radius: 10px; text-align: center; height: 180px;">
+        <h3 style="margin: 0;">Hour 24-48</h3>
+        <h4>Grade 3</h4>
+        <hr>
+        <small>
+        7+ stools/day<br>
+        Blood in stool, fever<br>
+        <strong>HOSPITALIZATION</strong>
+        </small>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with arrow3:
+        st.markdown("""
+        <div style="display: flex; align-items: center; height: 180px; justify-content: center;">
+        <span style="font-size: 2rem; color: #ff6b6b;">→</span>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with esc_col4:
+        st.markdown("""
+        <div style="background-color: #880000; color: white; padding: 1rem; border-radius: 10px; text-align: center; height: 180px;">
+        <h3 style="margin: 0;">Hour 48+</h3>
+        <h4>Grade 4</h4>
+        <hr>
+        <small>
+        Perforation risk<br>
+        Hemodynamic instability<br>
+        <strong>ICU / SURGERY</strong>
+        </small>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Key message
+    st.success("""
+    **🎯 Our system catches it at Hour 0:**
+    
+    By analyzing clinical notes, labs, and medications together, we detect the Grade 2 pattern **before escalation**.
+    The patient gets treatment on Day 1, not Day 5 in the ICU.
+    """)
+    
+    st.markdown("---")
+    
+    # =========================================================================
     # INCIDENCE BY ORGAN SYSTEM
     # =========================================================================
     st.subheader("🫀 irAE Incidence by Organ System")
