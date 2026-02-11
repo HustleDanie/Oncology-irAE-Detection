@@ -34,6 +34,7 @@ from ..analyzers import (
     HematologicAnalyzer,
 )
 from ..parsers.note_parser import NoteParser
+from ..utils.accuracy_monitor import log_prediction
 from .client import BaseLLMClient
 from .prompts import PromptBuilder
 from .prompts_medgemma import MedGemmaPromptBuilder
@@ -275,6 +276,23 @@ class IRAEAssessmentEngine:
             # Add safety note to uncertainty factors
             if assessment.confidence_score:
                 assessment.confidence_score.uncertainty_factors.extend(safety_corrections)
+
+        # Step 8: LOG PREDICTION FOR ACCURACY MONITORING
+        try:
+            affected_system_names = [
+                f.system.value for f in assessment.affected_systems if f.detected
+            ]
+            log_prediction(
+                case_id=patient_data.patient_id or "unknown",
+                predicted_irae=assessment.irae_detected,
+                predicted_severity=assessment.overall_severity.value,
+                predicted_urgency=assessment.urgency.value.split()[0].lower(),  # Extract 'routine' from '🟢 Routine monitoring'
+                predicted_systems=affected_system_names,
+                inference_time_ms=confidence_score.rule_match_count * 10 if confidence_score else None,  # Approximate
+            )
+            logger.info(f"[MONITOR] Prediction logged for case {patient_data.patient_id}")
+        except Exception as e:
+            logger.warning(f"[MONITOR] Failed to log prediction: {e}")
 
         return assessment
     
