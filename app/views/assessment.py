@@ -38,6 +38,10 @@ def render_freetext_input():
     st.markdown("### Enter Clinical Data as Free Text")
     st.info("💡 Paste clinical notes, lab results, and medication lists directly.")
     
+    # Initialize session state for form submission
+    if "freetext_submitted" not in st.session_state:
+        st.session_state.freetext_submitted = False
+    
     with st.form("freetext_form"):
         col1, col2 = st.columns(2)
         
@@ -83,7 +87,7 @@ def render_freetext_input():
         
         st.markdown("---")
         
-        submitted = st.form_submit_button("🔍 Analyze for irAEs", type="primary", use_container_width=True)
+        submitted = st.form_submit_button("Analyze for irAEs", type="primary", use_container_width=True)
         
         if submitted:
             # Create PatientData object
@@ -110,14 +114,27 @@ def render_freetext_input():
                 symptom_parser = SymptomParser()
                 patient_data.symptoms = symptom_parser.parse(symptoms_text)
             
-            # Run assessment with MedGemma
-            run_assessment(patient_data, use_llm=True)
+            # Store patient data and run assessment
+            st.session_state.pending_patient_data = patient_data
+            st.session_state.freetext_submitted = True
+    
+    # Display results OUTSIDE the form
+    if st.session_state.freetext_submitted and "pending_patient_data" in st.session_state:
+        run_assessment(st.session_state.pending_patient_data, use_llm=True)
+        # Reset the flag
+        st.session_state.freetext_submitted = False
+        if "pending_patient_data" in st.session_state:
+            del st.session_state.pending_patient_data
 
 
 def render_structured_input():
     """Render structured input form."""
     st.markdown("### Enter Clinical Data in Structured Format")
     st.info("💡 Use this form for precise, structured data entry.")
+    
+    # Initialize session state for form submission
+    if "structured_submitted" not in st.session_state:
+        st.session_state.structured_submitted = False
     
     with st.form("structured_form"):
         # Patient info
@@ -236,7 +253,7 @@ def render_structured_input():
         
         st.markdown("---")
         
-        submitted = st.form_submit_button("🔍 Analyze for irAEs", type="primary", use_container_width=True)
+        submitted = st.form_submit_button("Analyze for irAEs", type="primary", use_container_width=True)
         
         if submitted:
             # Build patient data from structured inputs
@@ -249,8 +266,17 @@ def render_structured_input():
                 notes_text,
             )
             
-            # Run assessment with MedGemma
-            run_assessment(patient_data, use_llm=True)
+            # Store patient data for display outside form
+            st.session_state.pending_structured_data = patient_data
+            st.session_state.structured_submitted = True
+    
+    # Display results OUTSIDE the form
+    if st.session_state.structured_submitted and "pending_structured_data" in st.session_state:
+        run_assessment(st.session_state.pending_structured_data, use_llm=True)
+        # Reset the flag
+        st.session_state.structured_submitted = False
+        if "pending_structured_data" in st.session_state:
+            del st.session_state.pending_structured_data
 
 
 def build_patient_data_from_structured(
