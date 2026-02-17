@@ -63,7 +63,7 @@ if "patient_data" not in st.session_state:
 if "assessment_result" not in st.session_state:
     st.session_state.assessment_result = None
 
-from app.views import home, assessment, about, sample_cases, statistics, technical, impact, architecture
+from app.views import home, assessment, about, sample_cases, statistics, technical, impact
 
 
 def main():
@@ -135,7 +135,7 @@ def main():
         st.session_state.current_page = "Assessment"
     
     # Navigation options (using simple text to avoid encoding issues)
-    nav_options = ["Assessment", "Architecture"]
+    nav_options = ["Assessment"]
     
     page = st.sidebar.radio(
         "Navigation",
@@ -158,8 +158,6 @@ def main():
     # Route to appropriate page
     if page == "Assessment":
         assessment.render()
-    elif page == "Architecture":
-        architecture.render()
 
 
 # Call main() when the module is loaded by Streamlit
