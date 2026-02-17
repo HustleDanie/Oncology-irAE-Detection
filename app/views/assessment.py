@@ -37,7 +37,60 @@ def render_freetext_input():
     """Render free text input form."""
     st.markdown("### Enter Clinical Data as Free Text")
     st.info("💡 Paste clinical notes, lab results, and medication lists directly.")
-    
+
+    # Sample case for testing
+    with st.expander("📌 **Try a Sample Case** — click to view, then copy into the fields below"):
+        st.markdown("**Patient:** 67-year-old male · Non-small cell lung cancer · Started pembrolizumab 3 weeks ago")
+        s1, s2 = st.columns(2)
+        with s1:
+            st.markdown("**📦 Medications** *(copy this)*")
+            st.code(
+                "Pembrolizumab 200mg IV q3weeks (started 3 weeks ago)\n"
+                "Ondansetron 8mg PRN nausea\n"
+                "Omeprazole 20mg daily\n"
+                "Metformin 500mg BID",
+                language=None,
+            )
+            st.markdown("**🔬 Labs** *(copy this)*")
+            st.code(
+                "AST 142 U/L (H)\n"
+                "ALT 168 U/L (H)\n"
+                "Total Bilirubin 2.1 mg/dL (H)\n"
+                "ALP 95 U/L\n"
+                "TSH 0.08 mIU/L (L)\n"
+                "Free T4 2.8 ng/dL (H)\n"
+                "Creatinine 1.1 mg/dL\n"
+                "WBC 6.2 x10^9/L\n"
+                "Hemoglobin 13.1 g/dL",
+                language=None,
+            )
+        with s2:
+            st.markdown("**🩺 Symptoms** *(copy this)*")
+            st.code(
+                "Fatigue - moderate, worsening over 5 days\n"
+                "Nausea - mild, intermittent\n"
+                "Right upper quadrant discomfort\n"
+                "Unintentional weight loss 3 lbs\n"
+                "Mild tremor in hands\n"
+                "Heat intolerance - new onset",
+                language=None,
+            )
+            st.markdown("**📝 Clinical Notes** *(copy this)*")
+            st.code(
+                "67M with NSCLC on pembrolizumab cycle 2. Presents with 5-day history of increasing "
+                "fatigue, mild RUQ discomfort, and new tremor. Labs show AST/ALT elevated ~3.5x ULN "
+                "concerning for immune-mediated hepatitis. TSH suppressed with elevated free T4 "
+                "suggesting concurrent thyrotoxicosis. No fever, no diarrhea. Patient reports decreased "
+                "appetite. Exam: mild RUQ tenderness, no jaundice, fine tremor bilateral hands, "
+                "tachycardia HR 102. Prior labs 3 weeks ago were normal.",
+                language=None,
+            )
+        st.success(
+            "⬆️ This case demonstrates **hepatitis (Grade 2)** + **thyrotoxicosis** in a patient on "
+            "pembrolizumab. Copy each section into the matching field below, set Age to **67** and "
+            "Cancer Type to **Non-small cell lung cancer**, then click **Analyze**."
+        )
+
     # Initialize session state for form submission
     if "freetext_submitted" not in st.session_state:
         st.session_state.freetext_submitted = False
