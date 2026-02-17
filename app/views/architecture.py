@@ -565,3 +565,11 @@ def render():
         '("the patient is crashing") to **proactive** ("this patient needs attention '
         "before they crash\"). It doesn't replace oncologists—**it gives them superpowers.**"
     )
+
+    # ── EMBEDDED ASSESSMENT ──────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("# 🩺 Try It — Patient Assessment")
+    st.markdown("Enter clinical data below to see the system in action.")
+
+    from app.views import assessment
+    assessment.render_freetext_input()
