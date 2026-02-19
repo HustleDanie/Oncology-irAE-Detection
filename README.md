@@ -34,7 +34,7 @@ Immunotherapy drugs (checkpoint inhibitors like pembrolizumab, nivolumab, ipilim
 | 🔬 **Organ-Specific Analysis** | Dedicated analyzers for 7 organ systems |
 | 📊 **CTCAE Grading** | Standardized severity grading (Grade 1-4) |
 | 🚨 **Urgency Triage** | 🟢 Routine, 🟡 Soon, 🟠 Urgent, 🔴 Emergency |
-| 🤖 **LLM Integration** | Optional GPT-4/Claude for enhanced clinical reasoning |
+| 🤖 **LLM Integration** | Google MedGemma (HAI-DEF) for clinical reasoning |
 | 🖥️ **Web Interface** | Streamlit-based UI for clinicians |
 
 ## 📁 Project Structure
@@ -61,7 +61,7 @@ Oncology/
 │   │   ├── cardiac_analyzer.py
 │   │   └── immunotherapy_detector.py
 │   ├── llm/              # LLM integration
-│   │   ├── client.py     # OpenAI/Anthropic client
+│   │   ├── client.py     # MedGemma HuggingFace client
 │   │   ├── prompts.py    # Prompt templates
 │   │   └── assessment_engine.py
 │   └── utils/            # Utilities
@@ -122,9 +122,7 @@ Oncology/
    copy .env.example .env   # Windows
    cp .env.example .env     # macOS/Linux
    
-   # Edit .env with your API keys (optional)
-   OPENAI_API_KEY=sk-your-key-here
-   ANTHROPIC_API_KEY=sk-ant-your-key-here
+   # Edit .env if needed (MedGemma runs locally, no API keys required)
    ```
 
 ## 💻 Usage
@@ -224,13 +222,9 @@ pytest tests/ --cov=src --cov-report=html
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `OPENAI_API_KEY` | OpenAI API key for GPT models | No* |
-| `ANTHROPIC_API_KEY` | Anthropic API key for Claude | No* |
-| `LLM_PROVIDER` | `openai` or `anthropic` | No |
-| `LLM_MODEL` | Model name (e.g., `gpt-4o`) | No |
+| `LLM_PROVIDER` | `huggingface` (default) | No |
+| `HUGGINGFACE_MODEL` | MedGemma model name | No |
 | `DEBUG` | Enable debug mode | No |
-
-*At least one API key required for LLM-enhanced analysis
 
 ### Settings File
 

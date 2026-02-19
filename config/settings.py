@@ -2,7 +2,6 @@
 
 import os
 from pathlib import Path
-from typing import Optional
 from pydantic import Field, ConfigDict
 from pydantic_settings import BaseSettings
 
@@ -22,16 +21,10 @@ class Settings(BaseSettings):
     debug: bool = False
     log_level: str = "INFO"
     
-    # LLM Configuration
-    llm_provider: str = Field(default="huggingface", description="LLM provider: openai, anthropic, or huggingface")
-    
-    # API-based LLMs
-    openai_api_key: Optional[str] = Field(default=None, description="OpenAI API key")
-    openai_model: str = Field(default="gpt-4o", description="OpenAI model name")
-    anthropic_api_key: Optional[str] = Field(default=None, description="Anthropic API key")
-    anthropic_model: str = Field(default="claude-3-sonnet-20240229", description="Anthropic model name")
+    # LLM Configuration — Google MedGemma (HAI-DEF)
+    llm_provider: str = Field(default="huggingface", description="LLM provider")
 
-    # Local (Hugging Face) LLMs - Google HAI-DEF MedGemma
+    # Hugging Face — Google HAI-DEF MedGemma
     huggingface_model: str = Field(default="google/medgemma-4b-it", description="Primary HuggingFace model for all medical tasks")
     huggingface_model_fallback: str = Field(default="google/medgemma-27b-text-it", description="Fallback model for complex reasoning (requires more resources)")
     use_quantization: bool = Field(default=True, description="Use 8-bit quantization to reduce memory usage")
@@ -46,13 +39,7 @@ class Settings(BaseSettings):
     @property
     def llm_enabled(self) -> bool:
         """Check if LLM is configured and enabled."""
-        if self.llm_provider == "openai":
-            return self.openai_api_key is not None
-        elif self.llm_provider == "anthropic":
-            return self.anthropic_api_key is not None
-        elif self.llm_provider == "huggingface":
-            return True  # Assumes model is available locally
-        return False
+        return self.llm_provider == "huggingface"
 
 
 # Global settings instance

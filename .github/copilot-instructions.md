@@ -8,7 +8,7 @@ AI-powered clinical decision support system for detecting, classifying, and tria
 ## Tech Stack
 - Python 3.11+
 - Streamlit (web interface)
-- OpenAI/Anthropic API (LLM backend)
+- Google MedGemma (HAI-DEF) via Hugging Face (LLM backend)
 - Pydantic (data validation)
 
 ## Key Features
